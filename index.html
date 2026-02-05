@@ -1,0 +1,198 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Portfolio — sound art & research" />
+  <title>Petr Němec — Portfolio</title>
+
+  <link rel="icon" type="image/png" href="assets/favicon_1.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Centered drawing mask layer (optional visible preview) -->
+  <div class="mask-layer" aria-hidden="true">
+    <!-- Replace with your drawing file -->
+    <img id="maskImg" class="mask-img" src="assets/background.jpg" alt="" decoding="async" />
+  </div>
+
+  <!-- Background effect canvas (dots/lines) -->
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <!-- Page content -->
+  <main class="wrap">
+    <header class="hero">
+      <h1>Petr Němec</h1>
+      <p class="tagline">Sound Art • Research • Composition</p>
+    </header>
+
+    <section class="section" id="works">
+      <h2>Selected Works</h2>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>Cesta do království much (pre-release)</h3>
+          <p class="work-desc">fixed composition. 
+            imaginative narative composition inpired by workshop of <a href="https://suotsana.net/about/">Yenting Hsu</a> 
+            <br><b>2025</b></p>
+        </div>
+        <div class="audio-embed" aria-label="Audio player">
+          <audio controls preload="none">
+            <source src="assets/kralovstvi_much_preview - Stereo Out - Output.wav" type="audio/wav">
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      </article>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>Becoming Birdfish</h3>
+          <p class="work-desc">
+            Becoming Birdfish is a text/graphic score for two voices that functions as a guided imaginative situation.
+            It does not use a fixed recitation text, but a series of instructions and questions that gradually shift the performers’
+            attention from speaking to listening, from description to bodily experience, and from individual expression to dialogue
+             within a shared sonic space.
+             The score emphasizes communication beyond ordinary language:
+             if words appear, the piece invites the performers to continue without a known language and to work with the voice as a physical gesture.
+            <br> <b>2025</b></p>
+          <p class="work-participants">
+            <span class="role">Voices:</span> Bedřiška Ponížilová & Vojtěch Šembera
+          </p>
+        </div>
+        <div class="embed" aria-label="YouTube video embed">
+          <iframe
+            src="https://www.youtube.com/embed/-iINWMupkYo?si=esZdB4MHKqb2Ouqu" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </article>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>06-disconnected-v3-Stereo Out.wav</h3>
+          <p class="work-desc">Moments when a connection breaks so another can be formed. <br> 
+            Looking for existence in the fragile space between imagination and reality, between memory and vision. 
+            <br> <b>2025</b></p>
+          <p class="work-participants">
+            <span class="role">Choreographer/Dancers:</span> Vladena Klimek, Amálie Cuplová
+          </p>
+        </div>
+        <div class="embed" aria-label="YouTube video embed">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/skIycvHkkaQ"
+            title="06-disconnected-v3-Stereo Out.wav"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen>
+          </iframe>
+        </div>
+      </article>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>hledání</h3>
+          <p class="work-desc">composition
+            <br> Searching for a feeling of hope in three sound layers hopelessly balancing each other.           
+            <br> <b>2024</b>
+          </p>
+        </div>
+        <div class="audio-embed" aria-label="Audio player">
+          <iframe
+            class="bandcamp-light"
+            style="border: 0; width: 100%; height: 120px;"
+            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=ffffff/linkcol=0687f5/tracklist=false/artwork=small/transparent=true/"
+            seamless>
+            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
+          </iframe>
+          <iframe
+            class="bandcamp-dark"
+            style="border: 0; width: 100%; height: 120px;"
+            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=333333/linkcol=0f91ff/tracklist=false/artwork=small/transparent=true/"
+            seamless>
+            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
+          </iframe>
+        </div>
+      </article>
+    </section>
+
+    <section class="section" id="research">
+      <h2>Research</h2>
+
+        <article class="work">
+          <div class="work-meta">
+            <h3>Exconv</h3>
+            <p class="work-desc">
+              The exconv research introduces an experimental toolkit for 1D and 2D FFT-based convolution, 
+              providing a unified framework for sophisticated cross-modal mappings between audio, images, and video. 
+              Through techniques such as spectral sculpting, the project establishes a bi-directional dialogue
+              where audio spectra shape visual parameters like radial filters and YCbCr channels, 
+              while video frames can reciprocally influence sonic textures. 
+              Positioned as a technologically pioneering form of sound art, 
+              this work utilizes the digital signal chain to reveal phenomena unrecognizable to the eye 
+              by embracing an aesthetics of failure, including glitches and unconventional algorithmic processes.
+            </p>
+            <div class="work-actions">
+              <a class="btn" href="https://github.com/Nemecxpetr/exconv" target="_blank" rel="noreferrer">
+                <i class="fa-brands fa-github" aria-hidden="true"></i>
+                <span>GitHub</span>
+              </a>
+            </div>
+          </div>
+          <div class="highlight-card" aria-label="Instagram highlight">
+            <p class="highlight-title">Instagram Highlight</p>
+            <a class="btn" href="https://www.instagram.com/stories/highlights/18441302296108489/" target="_blank" rel="noreferrer">
+              Open Highlight
+            </a>
+          </div>
+        </article>
+      </section>
+
+      <!--
+      <section class="section" id="about">
+      <h2>About</h2>
+      <p>
+        Short bio. Your themes, tools, collaborations, etc. Keep it 3–6 lines.
+      </p>
+      </section>
+      -->
+    <section class="section" id="contact">
+      <h2>Contact</h2>
+      <nav class="links" aria-label="Primary links">
+        <a href="mailto:nemecxpetr@gmail.com" aria-label="Email">
+          <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+          <span class="sr-only">Email</span>
+        </a>
+        <a href="https://www.youtube.com/@pjotrgerman" target="_blank" rel="noreferrer" aria-label="YouTube">
+          <i class="fa-brands fa-youtube" aria-hidden="true"></i>
+          <span class="sr-only">YouTube</span>
+        </a>
+        <a href="https://soundcloud.com/nemecxpetr" target="_blank" rel="noreferrer" aria-label="SoundCloud">
+          <i class="fa-brands fa-soundcloud" aria-hidden="true"></i>
+          <span class="sr-only">SoundCloud</span>
+        </a>
+        <a href="https://petrnemec.bandcamp.com" target="_blank" rel="noreferrer" aria-label="Bandcamp">
+          <i class="fa-brands fa-bandcamp" aria-hidden="true"></i>
+          <span class="sr-only">Bandcamp</span>
+        </a>
+        <a href="https://instagram.com/pjotrgerman" target="_blank" rel="noreferrer" aria-label="Instagram">
+          <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+          <span class="sr-only">Instagram</span>
+        </a>
+      </nav>
+      <p>
+        Reach me at <a href="mailto:nemecxpetr@gmail.com">nemecxpetr@gmail.com</a>.
+      </p>
+    </section>
+
+    <footer class="footer">
+      <p>© <span id="year"></span> Petr Němec</p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
