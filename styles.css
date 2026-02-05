@@ -13,6 +13,7 @@
   --maxw: 820px;
   --pad: clamp(18px, 4vw, 36px);
   --gap: clamp(14px, 2.2vw, 22px);
+  --font-main: "Courier New", Courier, ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
 
   /* drawing preview opacity (set to 0 if you want it invisible) */
   --mask-opacity: 0;
@@ -41,7 +42,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: var(--font-main);
+  font-size: 14px;
   line-height: 1.45;
   letter-spacing: 0.2px;
 }
