@@ -1,0 +1,155 @@
+﻿[
+  {
+    "date": "2026-01-31",
+    "dateLabel": "31 Jan 2026",
+    "event": "Nanofestival",
+    "work": null,
+    "role": "sound intervention",
+    "place": "Brno — Kafara",
+    "notes": "w/ objects by Sára Bočková; collab Filip Dobrocký"
+  },
+  {
+    "date": "2026-01-29",
+    "dateLabel": "29 Jan 2026",
+    "event": "CORE",
+    "work": "Kytarovka",
+    "workItalic": true,
+    "role": "performer",
+    "place": "Brno — Rello",
+    "notes": "as part of the collective Mladé Zimy; dynamic collective setting"
+  },
+  {
+    "date": "2025-12-29",
+    "dateLabel": "29–30 Dec 2025",
+    "dateEnd": "2025-12-30",
+    "event": "Radio Archipel",
+    "work": "This Is the End",
+    "workItalic": true,
+    "role": "60 min improvisation (24h stream)",
+    "place": "Berlin (UdK)",
+    "notes": "w/ Aliaksandra Yak., Shu, Alberto De Campo, Hannes Hoelzl, et al."
+  },
+  {
+    "date": "2025-11-29",
+    "dateLabel": "29 Nov 2025",
+    "event": "There2Care",
+    "work": "Míchačka",
+    "workItalic": true,
+    "role": "performative lecture",
+    "place": "Brno — Tři ocásci",
+    "notes": "benefit event for Palestine"
+  },
+  {
+    "date": "2025-11-22",
+    "dateLabel": "22 Nov 2025",
+    "event": null,
+    "work": "Rýmařove",
+    "workItalic": true,
+    "role": "performance / accompaniment",
+    "place": "Rýmařov — Jazzclub",
+    "notes": "accompaniment to a poem; w/ Ladibor Danda"
+  },
+  {
+    "date": "2025-11-02",
+    "dateLabel": "02 Nov 2025",
+    "event": null,
+    "work": "disconnected",
+    "workItalic": true,
+    "role": "collaboration / performance",
+    "place": "Brno — Divadlo na Orlí (DnO)",
+    "notes": "w/ DDD (Vladěna Klimek, Amálie Cuplová)"
+  },
+  {
+    "date": "2025-10-30",
+    "dateLabel": "30 Oct 2025",
+    "event": "SoundChain",
+    "work": "Becoming Fish/Bird",
+    "workItalic": true,
+    "role": "composition (2 voices) + live electronics",
+    "place": "Brno — DnO",
+    "notes": "organized by Otto Wanke; part of a collective composition"
+  },
+  {
+    "date": "2025-10-29",
+    "dateLabel": "29 Oct 2025",
+    "event": "Fakulta Zní",
+    "work": "REZONE",
+    "workItalic": true,
+    "role": "sound installation / performance",
+    "place": "Brno — JAMU",
+    "notes": "w/ Martin Janda"
+  },
+  {
+    "date": "2025-10-18",
+    "dateLabel": "18 Oct 2025",
+    "event": "JAMA",
+    "work": "breathing through memory",
+    "workItalic": true,
+    "role": "electroacoustic live set",
+    "place": "Banská Štiavnica"
+  },
+  {
+    "date": "2025-09-20",
+    "dateLabel": "20 Sep 2025",
+    "event": null,
+    "work": "Eternity of O",
+    "workItalic": true,
+    "role": "body performance",
+    "place": "Berlin (various)",
+    "notes": "w/ Ana"
+  },
+  {
+    "date": "2025-09-20",
+    "dateLabel": "20 Sep 2025",
+    "event": null,
+    "work": "Improvisation with Pure Data patch",
+    "role": "computer music / improvisation",
+    "place": "Berlin (various)",
+    "notes": "w/ Alesya (Aliaksandra)"
+  },
+  {
+    "date": "2025-09-11",
+    "dateLabel": "11 Sep 2025",
+    "event": null,
+    "work": "Black Peter Tarot",
+    "workItalic": true,
+    "role": "live set",
+    "place": "Dresden"
+  },
+  {
+    "date": "2025-04-23",
+    "dateLabel": "23 Apr 2025",
+    "event": "Studio of Contemporary Music",
+    "workHtml": "student works concert (<em>krą_~jina</em>)",
+    "role": "composition / presentation",
+    "place": "Brno — DnO",
+    "notes": "w/ Jan Horský"
+  },
+  {
+    "date": "2025-04-09",
+    "dateLabel": "09 Apr 2025",
+    "event": "MULTICREATIONS",
+    "work": "Chleba s máslem se salámem",
+    "workItalic": true,
+    "role": "performance (DZKZNS)",
+    "place": "Brno — DnO"
+  },
+  {
+    "date": "2024-10-17",
+    "dateLabel": "17 Oct 2024",
+    "event": "OUTPUT113/115",
+    "workHtml": "DZKZNS <em>pískoviště</em>",
+    "role": "live set",
+    "place": "Brno — CO.LABS",
+    "notes": "OUTPUT113/115 (collective / student events)"
+  },
+  {
+    "date": "2024-09-12",
+    "dateLabel": "12 Sep 2024",
+    "event": null,
+    "work": "Petr Němec — live set",
+    "role": "ambient live set",
+    "place": "Brno — CO.LABS",
+    "notes": "w/ Černý Tesák"
+  }
+]

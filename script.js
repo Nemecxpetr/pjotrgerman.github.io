@@ -4,6 +4,9 @@
   const maskImg = document.getElementById("maskImg");
   const yearEl = document.getElementById("year");
   const contentWrap = document.querySelector(".wrap");
+  const releasesUrl = "assets/releases.json";
+  const latestReleasesEl = document.getElementById("latest-releases");
+  const allReleasesEl = document.getElementById("all-releases");
   const wordPoolUrl = "assets/wordpool.txt";
   const wordShuffleThreshold = 0.7;
   const wordPickMode = "shuffle"; // "shuffle" or "ordered"
@@ -21,6 +24,223 @@
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
+
+  function cleanText(value) {
+    if (typeof value !== "string") {
+      return "";
+    }
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === "---") {
+      return "";
+    }
+    return trimmed;
+  }
+
+  function escapeHtml(value) {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function formatDateFromIso(iso) {
+    if (typeof iso !== "string") {
+      return "";
+    }
+    const parts = iso.split("-");
+    if (parts.length !== 3) {
+      return iso;
+    }
+    const year = parts[0];
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!year || !month || !day) {
+      return iso;
+    }
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthName = months[month - 1];
+    if (!monthName) {
+      return iso;
+    }
+    const dayLabel = String(day).padStart(2, "0");
+    return `${dayLabel} ${monthName} ${year}`;
+  }
+
+  function toDateValue(iso) {
+    if (typeof iso !== "string") {
+      return 0;
+    }
+    const parts = iso.split("-");
+    if (parts.length !== 3) {
+      return 0;
+    }
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!year || !month || !day) {
+      return 0;
+    }
+    return Date.UTC(year, month - 1, day);
+  }
+
+  function createReleaseCard(item, options) {
+    const opts = options || {};
+    const event = cleanText(item.event);
+    const workText = cleanText(item.work);
+    const workHtml = cleanText(item.workHtml);
+    const role = cleanText(item.role);
+    const place = cleanText(item.place);
+    const notes = cleanText(item.notes);
+    const dateLabel = cleanText(item.dateLabel) || formatDateFromIso(item.date);
+    const hasWork = Boolean(workHtml || workText);
+
+    const card = document.createElement("article");
+    card.className = "work release";
+
+    const meta = document.createElement("div");
+    meta.className = "work-meta";
+
+    const title = document.createElement("h3");
+    if (hasWork) {
+      if (workHtml) {
+        title.innerHTML = workHtml;
+      } else if (item.workItalic) {
+        title.innerHTML = `<em>${escapeHtml(workText)}</em>`;
+      } else {
+        title.textContent = workText;
+      }
+    } else if (event) {
+      title.textContent = event;
+    } else {
+      title.textContent = "Release";
+    }
+    meta.appendChild(title);
+
+    if (event && hasWork) {
+      const eventLine = document.createElement("p");
+      eventLine.className = "work-desc";
+      eventLine.textContent = event;
+      meta.appendChild(eventLine);
+    }
+
+    const detailParts = [];
+    if (dateLabel) {
+      detailParts.push(dateLabel);
+    }
+    if (role) {
+      detailParts.push(role);
+    }
+    if (place) {
+      detailParts.push(place);
+    }
+    if (detailParts.length) {
+      const detailLine = document.createElement("p");
+      detailLine.className = "work-desc";
+      detailLine.textContent = detailParts.join(" • ");
+      meta.appendChild(detailLine);
+    }
+
+    if (notes && opts.showNotes !== false) {
+      const notesLine = document.createElement("p");
+      notesLine.className = "work-desc";
+      notesLine.textContent = notes;
+      meta.appendChild(notesLine);
+    }
+
+    card.appendChild(meta);
+
+    const allowLinks = opts.showLinks !== false;
+    if (allowLinks && Array.isArray(item.links) && item.links.length) {
+      const actions = document.createElement("div");
+      actions.className = "release-actions";
+      item.links.forEach((link) => {
+        if (!link || typeof link.url !== "string" || typeof link.label !== "string") {
+          return;
+        }
+        const label = link.label.trim();
+        const url = link.url.trim();
+        if (!label || !url) {
+          return;
+        }
+        const anchor = document.createElement("a");
+        anchor.className = "btn";
+        anchor.href = url;
+        anchor.textContent = label;
+        if (/^https?:\/\//i.test(url)) {
+          anchor.target = "_blank";
+          anchor.rel = "noreferrer";
+        }
+        actions.appendChild(anchor);
+      });
+      if (actions.childNodes.length) {
+        card.appendChild(actions);
+      }
+    }
+
+    return card;
+  }
+
+  function renderReleases(target, items, options) {
+    if (!target) {
+      return;
+    }
+    target.innerHTML = "";
+    const limit = options && typeof options.limit === "number" ? options.limit : items.length;
+    let count = 0;
+    for (let i = 0; i < items.length; i += 1) {
+      if (count >= limit) {
+        break;
+      }
+      const card = createReleaseCard(items[i], options);
+      target.appendChild(card);
+      count += 1;
+    }
+    if (!count) {
+      const empty = document.createElement("p");
+      empty.className = "work-desc";
+      empty.textContent = "No releases yet.";
+      target.appendChild(empty);
+    }
+  }
+
+  function loadReleases() {
+    if (!latestReleasesEl && !allReleasesEl) {
+      return;
+    }
+    fetch(releasesUrl, { cache: "no-store" })
+      .then((resp) => (resp.ok ? resp.json() : []))
+      .then((items) => {
+        if (!Array.isArray(items)) {
+          return;
+        }
+        const indexed = items.map((item, index) => ({ ...item, _index: index }));
+        indexed.sort((a, b) => {
+          const diff = toDateValue(b.date) - toDateValue(a.date);
+          if (diff !== 0) {
+            return diff;
+          }
+          return a._index - b._index;
+        });
+        if (latestReleasesEl) {
+          renderReleases(latestReleasesEl, indexed, { limit: 3, showLinks: false, showNotes: false });
+        }
+        if (allReleasesEl) {
+          renderReleases(allReleasesEl, indexed, { showLinks: true, showNotes: true });
+        }
+      })
+      .catch(() => {
+        if (latestReleasesEl) {
+          renderReleases(latestReleasesEl, [], { limit: 0 });
+        }
+        if (allReleasesEl) {
+          renderReleases(allReleasesEl, [], { limit: 0 });
+        }
+      });
+  }
+
+  loadReleases();
 
   if (!canvas || !ctx) {
     return;
