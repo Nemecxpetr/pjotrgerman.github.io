@@ -210,7 +210,18 @@
       return;
     }
     fetch(releasesUrl, { cache: "no-store" })
-      .then((resp) => (resp.ok ? resp.json() : []))
+      .then((resp) => (resp.ok ? resp.text() : ""))
+      .then((text) => {
+        const cleaned = text.replace(/^\uFEFF/, "");
+        if (!cleaned) {
+          return [];
+        }
+        try {
+          return JSON.parse(cleaned);
+        } catch (_err) {
+          return [];
+        }
+      })
       .then((items) => {
         if (!Array.isArray(items)) {
           return;
