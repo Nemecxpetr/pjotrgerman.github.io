@@ -232,7 +232,11 @@
           });
           meta.appendChild(secondaryWrap);
         }
+      } else {
+        grid.classList.add("release-grid-full");
       }
+    } else {
+      grid.classList.add("release-grid-full");
     }
 
     card.appendChild(grid);
