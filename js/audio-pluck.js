@@ -12,7 +12,12 @@ const PLUCK_SETTINGS = {
   samples: 4096,
   attackSamples: 24,
   minReleaseSamples: 420,
-  outputGainScale: 0.1
+  outputGainScale: 0.1,
+  brownStep: 0.06,
+  brownLeak: 0.985,
+  combDelaySec: 0.0035,
+  combMix: 0.2,
+  noiseDecaySamples: 360
 };
 
 const REVERB_SETTINGS = {
@@ -136,12 +141,23 @@ export function playPluck(size, sizeRange = { min: 1, max: 10 }) {
   const buffer = ac.createBuffer(1, PLUCK_SETTINGS.samples, ac.sampleRate);
   const data = buffer.getChannelData(0);
   const twoPiF = Math.PI * 2 * frequency;
+  const combDelaySamples = Math.max(1, Math.round(ac.sampleRate * PLUCK_SETTINGS.combDelaySec));
+  const brownHistory = new Float32Array(PLUCK_SETTINGS.samples);
+  let brownState = 0;
 
   for (let i = 0; i < PLUCK_SETTINGS.samples; i += 1) {
     const t = i / ac.sampleRate;
     const carrier = Math.sin(twoPiF * t) * Math.exp(-i / 1900);
-    const noise = (Math.random() * 2 - 1) * Math.exp(-i / 320);
-    const body = carrier * 0.76 + noise * 0.28;
+
+    brownState += (Math.random() * 2 - 1) * PLUCK_SETTINGS.brownStep;
+    brownState *= PLUCK_SETTINGS.brownLeak;
+    brownState = Math.max(-1, Math.min(1, brownState));
+    brownHistory[i] = brownState;
+
+    const delayedBrown = i >= combDelaySamples ? brownHistory[i - combDelaySamples] : 0;
+    const combedNoise = (brownState + delayedBrown * PLUCK_SETTINGS.combMix) * Math.exp(-i / PLUCK_SETTINGS.noiseDecaySamples);
+
+    const body = carrier * 0.76 + combedNoise * 0.28;
     const env = i < PLUCK_SETTINGS.attackSamples
       ? i / PLUCK_SETTINGS.attackSamples
       : Math.max(0, 1 - (i - PLUCK_SETTINGS.attackSamples) / releaseSamples);
