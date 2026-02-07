@@ -99,6 +99,9 @@
     const card = document.createElement("article");
     card.className = "work release";
 
+    const grid = document.createElement("div");
+    grid.className = "release-grid";
+
     const meta = document.createElement("div");
     meta.className = "work-meta";
 
@@ -149,36 +152,50 @@
       meta.appendChild(notesLine);
     }
 
-    card.appendChild(meta);
+    grid.appendChild(meta);
 
     const allowLinks = opts.showLinks !== false;
     if (allowLinks && Array.isArray(item.links) && item.links.length) {
-      const actions = document.createElement("div");
-      actions.className = "release-actions";
-      item.links.forEach((link) => {
-        if (!link || typeof link.url !== "string" || typeof link.label !== "string") {
-          return;
+      const validLinks = item.links
+        .filter((link) => link && typeof link.url === "string" && typeof link.label === "string")
+        .map((link) => ({
+          label: link.label.trim(),
+          url: link.url.trim()
+        }))
+        .filter((link) => link.label && link.url);
+
+      if (validLinks.length) {
+        const primary = validLinks[0];
+        const column = document.createElement("a");
+        column.className = "release-column";
+        column.href = primary.url;
+        column.textContent = primary.label;
+        if (/^https?:\/\//i.test(primary.url)) {
+          column.target = "_blank";
+          column.rel = "noreferrer";
         }
-        const label = link.label.trim();
-        const url = link.url.trim();
-        if (!label || !url) {
-          return;
+        grid.appendChild(column);
+
+        if (validLinks.length > 1) {
+          const secondaryWrap = document.createElement("div");
+          secondaryWrap.className = "release-secondary";
+          validLinks.slice(1).forEach((link) => {
+            const anchor = document.createElement("a");
+            anchor.className = "release-secondary-link";
+            anchor.href = link.url;
+            anchor.textContent = link.label;
+            if (/^https?:\/\//i.test(link.url)) {
+              anchor.target = "_blank";
+              anchor.rel = "noreferrer";
+            }
+            secondaryWrap.appendChild(anchor);
+          });
+          meta.appendChild(secondaryWrap);
         }
-        const anchor = document.createElement("a");
-        anchor.className = "btn";
-        anchor.href = url;
-        anchor.textContent = label;
-        if (/^https?:\/\//i.test(url)) {
-          anchor.target = "_blank";
-          anchor.rel = "noreferrer";
-        }
-        actions.appendChild(anchor);
-      });
-      if (actions.childNodes.length) {
-        card.appendChild(actions);
       }
     }
 
+    card.appendChild(grid);
     return card;
   }
 
@@ -203,6 +220,55 @@
       empty.textContent = "No releases yet.";
       target.appendChild(empty);
     }
+  }
+
+  function syncReleaseColumnWidth() {
+    const columns = document.querySelectorAll(".release-column");
+    if (!columns.length) {
+      return;
+    }
+
+    const probe = document.createElement("span");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.whiteSpace = "nowrap";
+    probe.style.pointerEvents = "none";
+    document.body.appendChild(probe);
+
+    const firstStyle = window.getComputedStyle(columns[0]);
+    const padLeft = parseFloat(firstStyle.paddingLeft) || 0;
+    const padRight = parseFloat(firstStyle.paddingRight) || 0;
+    const borderLeft = parseFloat(firstStyle.borderLeftWidth) || 0;
+    const borderRight = parseFloat(firstStyle.borderRightWidth) || 0;
+
+    let maxWidth = 0;
+    columns.forEach((column) => {
+      const style = window.getComputedStyle(column);
+      probe.style.font = style.font;
+      probe.style.letterSpacing = style.letterSpacing;
+      const label = column.textContent ? column.textContent.trim() : "";
+      if (!label) {
+        return;
+      }
+      const words = label.split(/\s+/);
+      words.forEach((word) => {
+        if (!word) {
+          return;
+        }
+        probe.textContent = word;
+        const textWidth = probe.getBoundingClientRect().width;
+        const total = Math.ceil(textWidth + padLeft + padRight + borderLeft + borderRight);
+        if (total > maxWidth) {
+          maxWidth = total;
+        }
+      });
+    });
+
+    if (maxWidth > 0) {
+      document.documentElement.style.setProperty("--release-col-width", `${maxWidth}px`);
+    }
+
+    probe.remove();
   }
 
   function loadReleases() {
@@ -240,6 +306,7 @@
         if (allReleasesEl) {
           renderReleases(allReleasesEl, indexed, { showLinks: true, showNotes: true });
         }
+        window.requestAnimationFrame(syncReleaseColumnWidth);
       })
       .catch(() => {
         if (latestReleasesEl) {
@@ -248,10 +315,12 @@
         if (allReleasesEl) {
           renderReleases(allReleasesEl, [], { limit: 0 });
         }
+        window.requestAnimationFrame(syncReleaseColumnWidth);
       });
   }
 
   loadReleases();
+  window.addEventListener("resize", syncReleaseColumnWidth);
 
   if (!canvas || !ctx) {
     return;

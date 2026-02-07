@@ -6,7 +6,10 @@
     "work": null,
     "role": "sound intervention",
     "place": "Brno — Kafara",
-    "notes": "w/ objects by Sára Bočková; collab Filip Dobrocký"
+    "notes": "w/ objects by Sára Bočková; collab Filip Dobrocký",
+    "links": [
+      { "label": "FB Event", "url": "https://fb.me/e/6EeJhMIRp" }
+    ]
   },
   {
     "date": "2026-01-29",
@@ -16,7 +19,10 @@
     "workItalic": true,
     "role": "performer",
     "place": "Brno — Rello",
-    "notes": "as part of the collective Mladé Zimy; dynamic collective setting"
+    "notes": "as part of the collective Mladé Zimy; dynamic collective setting",
+    "links": [
+      { "label": "FB Event", "url": "https://fb.me/e/3RDZd9VZU" }
+    ]
   },
   {
     "date": "2025-12-29",
@@ -37,7 +43,10 @@
     "workItalic": true,
     "role": "performative lecture",
     "place": "Brno — Tři ocásci",
-    "notes": "benefit event for Palestine"
+    "notes": "benefit event for Palestine",
+    "links": [
+      { "label": "Instagram", "url": "https://www.instagram.com/there2care/" }
+    ]
   },
   {
     "date": "2025-11-22",
@@ -57,7 +66,10 @@
     "workItalic": true,
     "role": "collaboration / performance",
     "place": "Brno — Divadlo na Orlí (DnO)",
-    "notes": "w/ DDD (Vladěna Klimek, Amálie Cuplová)"
+    "notes": "w/ DDD (Vladěna Klimek, Amálie Cuplová)",
+    "links": [
+      { "label": "Portfolio", "url": "index.html#works" }
+    ]
   },
   {
     "date": "2025-10-30",
@@ -67,7 +79,11 @@
     "workItalic": true,
     "role": "composition (2 voices) + live electronics",
     "place": "Brno — DnO",
-    "notes": "organized by Otto Wanke; part of a collective composition"
+    "notes": "organized by Otto Wanke; part of a collective composition",
+    "links": [
+      { "label": "Portfolio", "url": "index.html#works" },
+      { "label": "FB Event", "url": "https://fb.me/e/85wFKYg27" }
+    ]
   },
   {
     "date": "2025-10-29",
@@ -77,7 +93,10 @@
     "workItalic": true,
     "role": "sound installation / performance",
     "place": "Brno — JAMU",
-    "notes": "w/ Martin Janda"
+    "notes": "w/ Martin Janda",
+    "links": [
+      { "label": "FB Event", "url": "https://fb.me/e/8iibQ7Kp0" }
+    ]
   },
   {
     "date": "2025-10-18",
@@ -86,7 +105,10 @@
     "work": "breathing through memory",
     "workItalic": true,
     "role": "electroacoustic live set",
-    "place": "Banská Štiavnica"
+    "place": "Banská Štiavnica",
+    "links": [
+      { "label": "Event", "url": "https://www.jama.ooo/jama-79/" }
+    ]
   },
   {
     "date": "2025-09-20",
@@ -96,7 +118,10 @@
     "workItalic": true,
     "role": "body performance",
     "place": "Berlin (various)",
-    "notes": "w/ Ana"
+    "notes": "w/ Ana",
+    "links": [
+      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+    ]
   },
   {
     "date": "2025-09-20",
@@ -105,7 +130,10 @@
     "work": "Improvisation with Pure Data patch",
     "role": "computer music / improvisation",
     "place": "Berlin (various)",
-    "notes": "w/ Alesya (Aliaksandra)"
+    "notes": "w/ Alesya (Aliaksandra)",
+    "links": [
+      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+    ]
   },
   {
     "date": "2025-09-11",
@@ -114,7 +142,10 @@
     "work": "Black Peter Tarot",
     "workItalic": true,
     "role": "live set",
-    "place": "Dresden"
+    "place": "Dresden",
+    "links": [
+      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+    ]
   },
   {
     "date": "2025-04-23",
@@ -141,7 +172,10 @@
     "workHtml": "DZKZNS <em>pískoviště</em>",
     "role": "live set",
     "place": "Brno — CO.LABS",
-    "notes": "OUTPUT113/115 (collective / student events)"
+    "notes": "OUTPUT113/115 (collective / student events)",
+    "links": [
+      { "label": "Instagram", "url": "https://www.instagram.com/output_113115/" }
+    ]
   },
   {
     "date": "2024-09-12",
@@ -150,6 +184,9 @@
     "work": "Petr Němec — live set",
     "role": "ambient live set",
     "place": "Brno — CO.LABS",
-    "notes": "w/ Černý Tesák"
+    "notes": "w/ Černý Tesák",
+    "links": [
+      { "label": "FB Event", "url": "https://fb.me/e/4c9JEGVmH" }
+    ]
   }
 ]
