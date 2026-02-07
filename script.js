@@ -45,6 +45,45 @@
       .replace(/'/g, "&#39;");
   }
 
+  function getReleaseYear(item) {
+    if (!item) {
+      return null;
+    }
+    if (typeof item.date === "string") {
+      const year = Number(item.date.slice(0, 4));
+      if (Number.isFinite(year)) {
+        return year;
+      }
+    }
+    if (typeof item.dateLabel === "string") {
+      const match = item.dateLabel.match(/(19|20)\d{2}/);
+      if (match) {
+        const year = Number(match[0]);
+        if (Number.isFinite(year)) {
+          return year;
+        }
+      }
+    }
+    return null;
+  }
+
+  function applyReleaseTint(card, year, range) {
+    if (!card || !range || !Number.isFinite(year)) {
+      return;
+    }
+    const minYear = range.min;
+    const maxYear = range.max;
+    if (!Number.isFinite(minYear) || !Number.isFinite(maxYear)) {
+      return;
+    }
+    const span = Math.max(1, maxYear - minYear);
+    const t = Math.max(0, Math.min(1, (year - minYear) / span));
+    const darkAlpha = 0.08 * (1 - t);
+    const lightAlpha = 0.12 * t;
+    card.style.setProperty("--release-dark", darkAlpha.toFixed(3));
+    card.style.setProperty("--release-light", lightAlpha.toFixed(3));
+  }
+
   function formatDateFromIso(iso) {
     if (typeof iso !== "string") {
       return "";
@@ -98,6 +137,7 @@
 
     const card = document.createElement("article");
     card.className = "work release";
+    applyReleaseTint(card, getReleaseYear(item), opts.yearRange);
 
     const grid = document.createElement("div");
     grid.className = "release-grid";
@@ -300,11 +340,26 @@
           }
           return a._index - b._index;
         });
+        const yearValues = indexed
+          .map((item) => getReleaseYear(item))
+          .filter((year) => Number.isFinite(year));
+        const yearRange = yearValues.length
+          ? { min: Math.min(...yearValues), max: Math.max(...yearValues) }
+          : null;
         if (latestReleasesEl) {
-          renderReleases(latestReleasesEl, indexed, { limit: 3, showLinks: false, showNotes: false });
+          renderReleases(latestReleasesEl, indexed, {
+            limit: 3,
+            showLinks: false,
+            showNotes: false,
+            yearRange
+          });
         }
         if (allReleasesEl) {
-          renderReleases(allReleasesEl, indexed, { showLinks: true, showNotes: true });
+          renderReleases(allReleasesEl, indexed, {
+            showLinks: true,
+            showNotes: true,
+            yearRange
+          });
         }
         window.requestAnimationFrame(syncReleaseColumnWidth);
       })

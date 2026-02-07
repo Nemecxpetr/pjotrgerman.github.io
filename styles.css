@@ -131,7 +131,7 @@ p { margin: 0; color: var(--muted); }
 
 .wrap.wrap-top {
   justify-content: flex-start;
-  padding-top: calc(var(--pad) * 1.4);
+  padding-top: var(--pad);
 }
 
 .hero,
@@ -217,6 +217,26 @@ p { margin: 0; color: var(--muted); }
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.work.release .work-meta {
+  background: linear-gradient(
+      0deg,
+      rgba(0, 0, 0, var(--release-dark, 0)),
+      rgba(0, 0, 0, var(--release-dark, 0))
+    ),
+    var(--card);
+}
+
+@media (prefers-color-scheme: dark) {
+  .work.release .work-meta {
+    background: linear-gradient(
+        0deg,
+        rgba(255, 255, 255, var(--release-light, 0)),
+        rgba(255, 255, 255, var(--release-light, 0))
+      ),
+      var(--card);
+  }
 }
 
 .release-grid {
@@ -472,4 +492,27 @@ p { margin: 0; color: var(--muted); }
    ========= */
 @media (prefers-reduced-motion: reduce) {
   .work { box-shadow: none; }
+}
+.back-actions {
+  margin-top: 0;
+  margin-bottom: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-top: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.back-link {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--hairline);
+  padding: 4px 0;
+}
+
+.back-link:hover {
+  border-bottom-color: currentColor;
 }
