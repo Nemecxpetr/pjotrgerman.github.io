@@ -198,8 +198,25 @@
     <footer class="footer">
       <p>© <span id="year"></span> Petr Němec</p>
     </footer>
+
+    <section class="section secret-video-section" id="secret-video-section" aria-label="Hidden video challenge">
+      <div class="secret-video-block" id="secret-video-block">
+        <p class="secret-video-status" id="secret-video-status">
+          0/3
+        </p>
+        <div class="secret-video-frame" id="secret-video-frame" hidden>
+          <iframe 
+            src="https://www.youtube.com/embed/30jj71k7Nsc?si=6aY5K0gRAKuOCE8_&amp;start=2" 
+            title="YouTube video player" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" 
+            allowfullscreen>
+          </iframe>
+      </div>
+    </section>
   </main>
 
-  <script src="script.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
