@@ -37,6 +37,7 @@ const SINE_SETTINGS = {
 
 let audioCtx = null;
 let reverbChain = null;
+let audioEnabled = false;
 
 function getAudioContext() {
   if (audioCtx) {
@@ -109,6 +110,9 @@ function getReverbInput(ac) {
  * Resume audio context after a user gesture (browser autoplay policy).
  */
 export function unlockAudioContext() {
+  if (!audioEnabled) {
+    return;
+  }
   const ac = getAudioContext();
   if (!ac) {
     return;
@@ -118,12 +122,33 @@ export function unlockAudioContext() {
   }
 }
 
+export function isAudioEnabled() {
+  return audioEnabled;
+}
+
+export function setAudioEnabled(nextEnabled) {
+  audioEnabled = Boolean(nextEnabled);
+
+  if (!audioCtx) {
+    return;
+  }
+
+  if (audioEnabled && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  } else if (!audioEnabled && audioCtx.state === "running") {
+    audioCtx.suspend().catch(() => {});
+  }
+}
+
 /**
  * Play one synthetic pluck.
  * @param {number} size Dot size used for loudness + release mapping.
  * @param {{min:number,max:number}} sizeRange Expected range for size normalization.
  */
 export function playPluck(size, sizeRange = { min: 1, max: 10 }) {
+  if (!audioEnabled) {
+    return;
+  }
   const ac = getAudioContext();
   if (!ac || ac.state !== "running") {
     return;
@@ -178,6 +203,9 @@ export function playPluck(size, sizeRange = { min: 1, max: 10 }) {
  * @param {number} frequencyHz Target oscillator frequency in Hz.
  */
 export function playSineTone(frequencyHz) {
+  if (!audioEnabled) {
+    return;
+  }
   const ac = getAudioContext();
   if (!ac || ac.state !== "running") {
     return;
