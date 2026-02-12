@@ -7,6 +7,7 @@
   <meta name="description" content="Unlisted research article with interactive keyword map." />
   <title>Articles</title>
 
+  <link rel="icon" type="image/png" href="../assets/favicon_1.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -20,14 +21,20 @@
   <canvas
     id="fx"
     data-wrap-selector=".essay-layout"
-    data-active-zone-selector=".article-pane"
-    data-mask-area-selector=".article-pane"
+    data-active-zone-selector=".article-pane, .context-preview"
+    data-mask-area-selector=".article-pane, .context-preview"
     data-word-source-selector="#article-content"
     data-emit-only-mini-mode="true"
     aria-hidden="true">
   </canvas>
 
   <main class="essay-layout">
+    <header class="desktop-page-header" aria-label="Article header">
+      <p class="eyebrow">Unlisted Essay</p>
+      <h1 id="article-title-desktop">Loading article...</h1>
+      <p class="subtitle" id="article-subtitle-desktop"></p>
+    </header>
+
     <section class="map-pane" aria-label="Keyword map">
       <header class="map-header">
         <p class="eyebrow">Unlisted Essay</p>
@@ -52,6 +59,21 @@
         <p class="loading">Loading content...</p>
       </div>
     </section>
+
+    <div
+      class="column-resizer"
+      id="column-resizer"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize text and graph columns"
+      tabindex="0">
+    </div>
+
+    <aside class="context-preview" id="context-preview" aria-live="polite" aria-label="Context preview">
+      <h2 class="context-preview-title" id="context-preview-title"></h2>
+      <p class="context-preview-meta" id="context-preview-meta"></p>
+      <div class="context-preview-body" id="context-preview-body"></div>
+    </aside>
   </main>
 
   <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>

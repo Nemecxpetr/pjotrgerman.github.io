@@ -8,9 +8,18 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const NODE_WAVE_DAMPING = 0.009;
   const EDGE_WAVE_SPEED = 0.018;
   const NODE_WAVE_SPEED = 0.02;
-  const CONTEXT_ALIGN_EPSILON_PX = 0.6;
-  const CONTEXT_ALIGN_MAX_PASSES = 4;
+  const CONTEXT_ALIGN_EPSILON_PX = 0.26;
+  const CONTEXT_ALIGN_MAX_PASSES = 10;
+  const CONTEXT_ALIGN_INTERNAL_PASSES = 3;
+  const CONTEXT_ALIGN_X_OVERSHOOT_MOBILE = 84;
+  const CONTEXT_ALIGN_X_OVERSHOOT_TABLET = 220;
+  const CONTEXT_ALIGN_X_OVERSHOOT_DESKTOP = 460;
+  const CONTEXT_ALIGN_VIRTUAL_SCROLL_MIN_DESKTOP = 260;
+  const CONTEXT_ALIGN_MAX_SPACER_PX = 6000;
   const PARAGRAPH_ENTITY_SELECTOR = "p, ul, ol, blockquote";
+  const DESKTOP_PREVIEW_QUERY = "(min-width: 1200px)";
+  const PREVIEW_SOURCE_GRAPH = "graph";
+  const PREVIEW_SOURCE_TEXT = "text";
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
 
@@ -18,12 +27,20 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
   const titleEl = document.getElementById("article-title");
   const subtitleEl = document.getElementById("article-subtitle");
+  const desktopTitleEl = document.getElementById("article-title-desktop");
+  const desktopSubtitleEl = document.getElementById("article-subtitle-desktop");
   const essayLayout = document.querySelector(".essay-layout");
   const mapPane = document.querySelector(".map-pane");
   const paneResizer = document.getElementById("pane-resizer");
+  const columnResizer = document.getElementById("column-resizer");
   const articlePane = document.getElementById("article-pane");
   const articleContent = document.getElementById("article-content");
   const mapContainer = document.getElementById("mind-map");
+  const contextPreviewPane = document.getElementById("context-preview");
+  const contextPreviewTitle = document.getElementById("context-preview-title");
+  const contextPreviewMeta = document.getElementById("context-preview-meta");
+  const contextPreviewBody = document.getElementById("context-preview-body");
+  const desktopPreviewMedia = window.matchMedia(DESKTOP_PREVIEW_QUERY);
 
   let network = null;
   let nodesDataSet = null;
@@ -67,6 +84,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let contextAnchorSpacerBottomPx = 0;
   let lastArticlePaneScrollTop = 0;
   let suppressContextAnchorScrollReset = false;
+  let contextJumpAligning = false;
+  let activePreviewSource = "";
   const theme = readThemeValues();
 
   init().catch((error) => {
@@ -88,8 +107,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       section.classList.add("article-section");
     });
 
+    initContextPreview();
     initMobileMapScrollLock();
     initPaneResizer();
+    initColumnResizer();
     initContextShiftSystem();
     installMap(mapConfig);
     installTextPathHover();
@@ -130,8 +151,16 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function renderMeta(meta) {
-    titleEl.textContent = meta.title || "Untitled Listening Notes";
-    subtitleEl.textContent = [meta.subtitle, meta.author, meta.updated].filter(Boolean).join(" / ");
+    const resolvedTitle = meta.title || "Untitled Listening Notes";
+    const resolvedSubtitle = [meta.subtitle, meta.author, meta.updated].filter(Boolean).join(" / ");
+    titleEl.textContent = resolvedTitle;
+    subtitleEl.textContent = resolvedSubtitle;
+    if (desktopTitleEl) {
+      desktopTitleEl.textContent = resolvedTitle;
+    }
+    if (desktopSubtitleEl) {
+      desktopSubtitleEl.textContent = resolvedSubtitle;
+    }
 
     const existingMeta = articleContent.querySelector(".article-meta");
     if (existingMeta) {
@@ -287,6 +316,20 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       lastNodeImpulseAt = now;
       triggerNodeImpulse(nodeId, getPointerImpulseStrength());
       startEdgeWaveLoop();
+
+      const sectionId = getSectionIdForNode(nodeId);
+      if (sectionId) {
+        const nodeData = getNodeData(nodeId);
+        showContextPreviewForSection(sectionId, {
+          source: PREVIEW_SOURCE_GRAPH,
+          title: nodeData && nodeData.label ? String(nodeData.label) : "",
+          meta: ""
+        });
+      }
+    });
+
+    network.on("blurNode", () => {
+      clearContextPreview(PREVIEW_SOURCE_GRAPH);
     });
 
     network.on("afterDrawing", (ctx) => {
@@ -298,7 +341,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       if (!nodeId) {
         return;
       }
-      const sectionId = sectionByNodeId.get(nodeId);
+      const sectionId = getSectionIdForNode(nodeId);
       if (sectionId) {
         scrollToSection(sectionId);
       }
@@ -363,7 +406,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     const deltaY = currentScrollTop - lastArticlePaneScrollTop;
     lastArticlePaneScrollTop = currentScrollTop;
 
-    if (suppressContextAnchorScrollReset) {
+    if (suppressContextAnchorScrollReset || contextJumpAligning) {
       return;
     }
     if (Math.abs(deltaY) < 0.15) {
@@ -441,10 +484,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       return;
     }
 
-    const limits = getContextShiftLimits();
+    const limits = getContextShiftLimits(contextShiftDragState.block, { mode: "drag" });
     const dx = event.clientX - contextShiftDragState.startClientX;
     const dy = event.clientY - contextShiftDragState.startClientY;
-    const nextX = clampNumber(contextShiftDragState.startShiftX + dx, -limits.x, limits.x);
+    const nextX = clampNumber(contextShiftDragState.startShiftX + dx, limits.minX, limits.maxX);
     const nextY = clampNumber(contextShiftDragState.startShiftY + dy, -limits.y, limits.y);
     applyContextShift(contextShiftDragState.block, nextX, nextY);
     event.preventDefault();
@@ -463,14 +506,68 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     contextShiftDragState = null;
   }
 
-  function getContextShiftLimits() {
+  function getContextShiftLimits(block, options = {}) {
+    const mode = options.mode || "drag";
+    let baseX = 420;
+    let baseY = 120;
     if (window.innerWidth < 680) {
-      return { x: 46, y: 24 };
+      baseX = 72;
+      baseY = 24;
+    } else if (window.innerWidth < 960) {
+      baseX = 180;
+      baseY = 64;
+    }
+
+    let minX = -baseX;
+    let maxX = baseX;
+    const geometryBounds = getContextShiftBoundsFromGeometry(block);
+    if (geometryBounds) {
+      if (mode === "align") {
+        const overshoot = getContextAlignXOvershoot();
+        minX = geometryBounds.minX - overshoot;
+        maxX = geometryBounds.maxX + overshoot;
+      } else {
+        minX = Math.max(-baseX, geometryBounds.minX);
+        maxX = Math.min(baseX, geometryBounds.maxX);
+      }
+    }
+
+    if (maxX < minX) {
+      const pivot = (minX + maxX) / 2;
+      minX = pivot;
+      maxX = pivot;
+    }
+    return { minX, maxX, y: baseY };
+  }
+
+  function getContextAlignXOvershoot() {
+    if (window.innerWidth < 680) {
+      return CONTEXT_ALIGN_X_OVERSHOOT_MOBILE;
     }
     if (window.innerWidth < 960) {
-      return { x: 140, y: 64 };
+      return CONTEXT_ALIGN_X_OVERSHOOT_TABLET;
     }
-    return { x: 260, y: 120 };
+    return CONTEXT_ALIGN_X_OVERSHOOT_DESKTOP;
+  }
+
+  function getContextShiftBoundsFromGeometry(block) {
+    if (!(block instanceof HTMLElement) || !articlePane) {
+      return null;
+    }
+
+    const paneRect = articlePane.getBoundingClientRect();
+    const blockRect = block.getBoundingClientRect();
+    if (!paneRect.width || !blockRect.width) {
+      return null;
+    }
+
+    const padding = 6;
+    const currentShift = getCurrentContextShift(block);
+    const unshiftedLeft = blockRect.left - currentShift.x;
+    const unshiftedRight = blockRect.right - currentShift.x;
+    const minX = (paneRect.left + padding) - unshiftedLeft;
+    const maxX = (paneRect.right - padding) - unshiftedRight;
+    return { minX, maxX };
   }
 
   function applyContextShift(block, shiftX, shiftY) {
@@ -535,56 +632,82 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
     setActiveContextShiftBlock(block);
 
-    const limits = getContextShiftLimits();
-    clearContextAnchorSpacer();
-
-    const initial = getMarkerPointInArticlePane(marker);
-    if (!initial) {
-      return false;
-    }
-    const desiredShiftX = Number.isFinite(desiredColumnPx)
-      ? clampNumber(desiredColumnPx - initial.x, -limits.x, limits.x)
-      : 0;
-    // Keep vertical alignment in flow (scroll + spacer) to avoid paragraph overlap.
-    applyContextShift(block, desiredShiftX, 0);
-
-    // Use scroll as primary y-align correction.
-    let markerPoint = getMarkerPointInArticlePane(marker);
-    if (markerPoint && Number.isFinite(desiredRowPx)) {
-      applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+    const limits = getContextShiftLimits(block, { mode: "align" });
+    if (contextJumpAligning && isDesktopPreviewLayout()) {
+      ensureVirtualScrollRange(Math.max(
+        CONTEXT_ALIGN_VIRTUAL_SCROLL_MIN_DESKTOP,
+        articlePane ? articlePane.clientHeight * 0.4 : CONTEXT_ALIGN_VIRTUAL_SCROLL_MIN_DESKTOP
+      ));
     }
 
-    // If scroll clamping blocks y-alignment, inject temporary spacer on the constrained side.
-    markerPoint = getMarkerPointInArticlePane(marker);
-    if (markerPoint && Number.isFinite(desiredRowPx)) {
-      const residualY = desiredRowPx - markerPoint.y;
-      if (residualY > 0.5) {
-        // Marker is still too high: extend top so content can move downward.
-        setContextAnchorSpacers(residualY, 0);
-      } else if (residualY < -0.5) {
-        // Marker is still too low at bottom clamp: extend bottom and retry scroll.
-        setContextAnchorSpacers(0, Math.abs(residualY));
-        markerPoint = getMarkerPointInArticlePane(marker);
-        if (markerPoint) {
-          applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+    for (let i = 0; i < CONTEXT_ALIGN_INTERNAL_PASSES; i += 1) {
+      let markerPoint = getMarkerPointInArticlePane(marker);
+      if (!markerPoint) {
+        return false;
+      }
+
+      if (Number.isFinite(desiredColumnPx)) {
+        const currentShift = getCurrentContextShift(block);
+        const correctionX = desiredColumnPx - markerPoint.x;
+        const nextShiftX = clampNumber(currentShift.x + correctionX, limits.minX, limits.maxX);
+        applyContextShift(block, nextShiftX, 0);
+      }
+
+      markerPoint = getMarkerPointInArticlePane(marker);
+      if (!markerPoint) {
+        return false;
+      }
+
+      if (Number.isFinite(desiredRowPx)) {
+        applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+      }
+
+      markerPoint = getMarkerPointInArticlePane(marker);
+      if (!markerPoint) {
+        return false;
+      }
+
+      if (Number.isFinite(desiredRowPx)) {
+        const residualY = desiredRowPx - markerPoint.y;
+        if (residualY > CONTEXT_ALIGN_EPSILON_PX) {
+          const nextTop = Math.min(
+            CONTEXT_ALIGN_MAX_SPACER_PX,
+            contextAnchorSpacerTopPx + residualY
+          );
+          setContextAnchorSpacers(nextTop, contextAnchorSpacerBottomPx);
+          if (articlePane) {
+            void articlePane.offsetHeight;
+          }
+          markerPoint = getMarkerPointInArticlePane(marker);
+          if (markerPoint) {
+            applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+          }
+        } else if (residualY < -CONTEXT_ALIGN_EPSILON_PX) {
+          const nextBottom = Math.min(
+            CONTEXT_ALIGN_MAX_SPACER_PX,
+            contextAnchorSpacerBottomPx + Math.abs(residualY)
+          );
+          setContextAnchorSpacers(contextAnchorSpacerTopPx, nextBottom);
+          if (articlePane) {
+            void articlePane.offsetHeight;
+          }
+          markerPoint = getMarkerPointInArticlePane(marker);
+          if (markerPoint) {
+            applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+          }
         }
-      } else {
-        clearContextAnchorSpacer();
+      }
+
+      const finalPoint = getMarkerPointInArticlePane(marker);
+      if (!finalPoint) {
+        return false;
+      }
+      const dx = Number.isFinite(desiredColumnPx) ? (desiredColumnPx - finalPoint.x) : 0;
+      const dy = Number.isFinite(desiredRowPx) ? (desiredRowPx - finalPoint.y) : 0;
+      if (Math.abs(dx) <= CONTEXT_ALIGN_EPSILON_PX && Math.abs(dy) <= CONTEXT_ALIGN_EPSILON_PX) {
+        return true;
       }
     }
-
-    // Final x/y micro-correction through block shift.
-    markerPoint = getMarkerPointInArticlePane(marker);
-    if (!markerPoint) {
-      return false;
-    }
-    const currentShift = getCurrentContextShift(block);
-    const correctionX = Number.isFinite(desiredColumnPx) ? (desiredColumnPx - markerPoint.x) : 0;
-    applyContextShift(
-      block,
-      clampNumber(currentShift.x + correctionX, -limits.x, limits.x),
-      0
-    );
 
     const finalPoint = getMarkerPointInArticlePane(marker);
     if (!finalPoint) {
@@ -611,7 +734,16 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (!articlePane || !Number.isFinite(deltaY) || Math.abs(deltaY) < 0.2) {
       return;
     }
-    const maxScrollTop = Math.max(0, articlePane.scrollHeight - articlePane.clientHeight);
+    let maxScrollTop = Math.max(0, articlePane.scrollHeight - articlePane.clientHeight);
+    if (maxScrollTop < 0.5 && contextJumpAligning && isDesktopPreviewLayout()) {
+      const expanded = ensureVirtualScrollRange(Math.max(
+        CONTEXT_ALIGN_VIRTUAL_SCROLL_MIN_DESKTOP,
+        Math.abs(deltaY) + articlePane.clientHeight * 0.25
+      ));
+      if (expanded) {
+        maxScrollTop = Math.max(0, articlePane.scrollHeight - articlePane.clientHeight);
+      }
+    }
     const targetScrollTop = clampNumber(articlePane.scrollTop + deltaY, 0, maxScrollTop);
     suppressContextAnchorScrollReset = true;
     articlePane.scrollTop = targetScrollTop;
@@ -621,8 +753,16 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function setContextAnchorSpacers(topPx, bottomPx) {
-    const nextTop = Math.max(0, Number.isFinite(topPx) ? topPx : 0);
-    const nextBottom = Math.max(0, Number.isFinite(bottomPx) ? bottomPx : 0);
+    const nextTop = clampNumber(
+      Number.isFinite(topPx) ? topPx : 0,
+      0,
+      CONTEXT_ALIGN_MAX_SPACER_PX
+    );
+    const nextBottom = clampNumber(
+      Number.isFinite(bottomPx) ? bottomPx : 0,
+      0,
+      CONTEXT_ALIGN_MAX_SPACER_PX
+    );
     contextAnchorSpacerTopPx = nextTop;
     contextAnchorSpacerBottomPx = nextBottom;
     if (!articleContent) {
@@ -630,6 +770,26 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
     articleContent.style.setProperty("--context-anchor-spacer-top", `${nextTop.toFixed(3)}px`);
     articleContent.style.setProperty("--context-anchor-spacer-bottom", `${nextBottom.toFixed(3)}px`);
+  }
+
+  function ensureVirtualScrollRange(minRangePx) {
+    if (!articlePane || !articleContent) {
+      return false;
+    }
+    const currentRange = Math.max(0, articlePane.scrollHeight - articlePane.clientHeight);
+    const targetRange = Math.max(0, Number.isFinite(minRangePx) ? minRangePx : 0);
+    if (currentRange >= targetRange - 0.5) {
+      return false;
+    }
+
+    const deficit = targetRange - currentRange;
+    const half = deficit * 0.5;
+    setContextAnchorSpacers(
+      contextAnchorSpacerTopPx + half,
+      contextAnchorSpacerBottomPx + half
+    );
+    void articlePane.offsetHeight;
+    return true;
   }
 
   function clearContextAnchorSpacer() {
@@ -640,6 +800,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
     articleContent.style.setProperty("--context-anchor-spacer-top", "0px");
     articleContent.style.setProperty("--context-anchor-spacer-bottom", "0px");
+  }
+
+  function isDesktopPreviewLayout() {
+    return Boolean(desktopPreviewMedia && desktopPreviewMedia.matches);
   }
 
   function syncSelectedNode(sectionId, shouldFocus) {
@@ -759,10 +923,20 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         marker.classList.add("is-active");
         setHighlightedPath(edgeIds, nodeIds);
         centerGraphOnNodes(nodeIds);
+        const previewTarget = resolvePreviewTargetForMarker(marker, sectionId, nodeIds);
+        if (previewTarget) {
+          showContextPreviewForSection(previewTarget.sectionId, {
+            source: PREVIEW_SOURCE_TEXT,
+            title: previewTarget.title,
+            meta: previewTarget.meta,
+            focusText: previewTarget.focusText
+          });
+        }
       };
       const onLeave = () => {
         marker.classList.remove("is-active");
         clearHighlightedPath();
+        clearContextPreview(PREVIEW_SOURCE_TEXT);
       };
 
       marker.addEventListener("mouseenter", onEnter);
@@ -1031,11 +1205,57 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     return (currentIndex + 1) % mentions.length;
   }
 
+  function resolvePreviewTargetForMarker(marker, sectionId, nodeIds) {
+    const threadId = getMarkerThreadId(marker);
+    if (threadId) {
+      const mentions = threadMentionsById.get(threadId) || [];
+      const currentIndex = mentions.findIndex((item) => item.marker === marker);
+      if (mentions.length > 1 && currentIndex >= 0) {
+        const nextIndex = findNextThreadIndex(mentions, currentIndex);
+        const nextMention = mentions[nextIndex];
+        if (nextMention && nextMention.sectionId) {
+          return {
+            sectionId: nextMention.sectionId,
+            title: getSectionHeading(nextMention.sectionId),
+            meta: "",
+            focusText: getPreviewTextFromMarker(nextMention.marker)
+          };
+        }
+      }
+    }
+
+    if (Array.isArray(nodeIds) && nodeIds.length) {
+      const candidates = nodeIds
+        .map((nodeId) => getSectionIdForNode(nodeId))
+        .filter(Boolean);
+      const firstOther = candidates.find((candidate) => candidate !== sectionId);
+      const targetSectionId = firstOther || candidates[0];
+      if (targetSectionId) {
+        return {
+          sectionId: targetSectionId,
+          title: getSectionHeading(targetSectionId),
+          meta: ""
+        };
+      }
+    }
+
+    if (sectionId) {
+      return {
+        sectionId,
+        title: getSectionHeading(sectionId),
+        meta: ""
+      };
+    }
+
+    return null;
+  }
+
   function jumpToThreadMention(target, desiredRowPx, desiredColumnPx) {
     if (!target || !target.sectionId) {
       return;
     }
 
+    contextJumpAligning = true;
     scrollToSection(target.sectionId, {
       resetScroll: true,
       scrollBehavior: "auto",
@@ -1049,6 +1269,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       const settle = (pass) => {
         const done = alignMarkerContextBlock(target.marker, desiredRowPx, desiredColumnPx);
         if (done || pass >= CONTEXT_ALIGN_MAX_PASSES) {
+          window.requestAnimationFrame(() => {
+            contextJumpAligning = false;
+          });
           return;
         }
         window.requestAnimationFrame(() => settle(pass + 1));
@@ -1107,6 +1330,43 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       return [];
     }
     return [nodeId];
+  }
+
+  function getSectionIdForNode(nodeId) {
+    if (sectionByNodeId.has(nodeId)) {
+      return sectionByNodeId.get(nodeId) || "";
+    }
+    const asString = String(nodeId);
+    if (sectionByNodeId.has(asString)) {
+      return sectionByNodeId.get(asString) || "";
+    }
+    const isNumericId = /^-?\d+(?:\.\d+)?$/.test(asString);
+    const asNumber = isNumericId ? Number(asString) : Number.NaN;
+    if (Number.isFinite(asNumber) && sectionByNodeId.has(asNumber)) {
+      return sectionByNodeId.get(asNumber) || "";
+    }
+    return "";
+  }
+
+  function getNodeData(nodeId) {
+    if (!nodesDataSet) {
+      return null;
+    }
+    const direct = nodesDataSet.get(nodeId);
+    if (direct) {
+      return direct;
+    }
+    const asString = String(nodeId);
+    const stringNode = nodesDataSet.get(asString);
+    if (stringNode) {
+      return stringNode;
+    }
+    const isNumericId = /^-?\d+(?:\.\d+)?$/.test(asString);
+    const asNumber = isNumericId ? Number(asString) : Number.NaN;
+    if (Number.isFinite(asNumber)) {
+      return nodesDataSet.get(asNumber) || null;
+    }
+    return null;
   }
 
   function resolveEdgeIdsForMarker(pathSpec) {
@@ -1851,6 +2111,106 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     });
   }
 
+  function initColumnResizer() {
+    if (!essayLayout || !articlePane || !columnResizer) {
+      return;
+    }
+
+    const getMinWidths = () => ({ left: 520, right: 320 });
+
+    const clampArticleWidth = (requested) => {
+      const layoutRect = essayLayout.getBoundingClientRect();
+      const dividerWidth = columnResizer.getBoundingClientRect().width || 10;
+      const mins = getMinWidths();
+      const maxLeft = Math.max(mins.left, layoutRect.width - dividerWidth - mins.right);
+      return Math.min(maxLeft, Math.max(mins.left, requested));
+    };
+
+    const setArticlePaneWidth = (pixels) => {
+      if (!desktopPreviewMedia.matches) {
+        return;
+      }
+      const clamped = clampArticleWidth(pixels);
+      essayLayout.style.setProperty("--article-pane-size", `${Math.round(clamped)}px`);
+      columnResizer.setAttribute("aria-valuenow", String(Math.round(clamped)));
+      if (network) {
+        network.redraw();
+      }
+    };
+
+    const syncToViewport = () => {
+      if (!desktopPreviewMedia.matches) {
+        essayLayout.style.removeProperty("--article-pane-size");
+        return;
+      }
+      const current = articlePane.getBoundingClientRect().width;
+      setArticlePaneWidth(current);
+    };
+
+    const state = {
+      active: false,
+      startX: 0,
+      startWidth: 0
+    };
+
+    columnResizer.addEventListener("pointerdown", (event) => {
+      if (!desktopPreviewMedia.matches) {
+        return;
+      }
+      state.active = true;
+      state.startX = event.clientX;
+      state.startWidth = articlePane.getBoundingClientRect().width;
+      columnResizer.setPointerCapture(event.pointerId);
+      document.body.classList.add("is-resizing");
+      event.preventDefault();
+    });
+
+    columnResizer.addEventListener("pointermove", (event) => {
+      if (!state.active) {
+        return;
+      }
+      const deltaX = event.clientX - state.startX;
+      setArticlePaneWidth(state.startWidth + deltaX);
+    });
+
+    const stopResize = (event) => {
+      if (!state.active) {
+        return;
+      }
+      state.active = false;
+      if (event && columnResizer.hasPointerCapture(event.pointerId)) {
+        columnResizer.releasePointerCapture(event.pointerId);
+      }
+      document.body.classList.remove("is-resizing");
+    };
+
+    columnResizer.addEventListener("pointerup", stopResize);
+    columnResizer.addEventListener("pointercancel", stopResize);
+
+    columnResizer.addEventListener("keydown", (event) => {
+      if (!desktopPreviewMedia.matches) {
+        return;
+      }
+      const step = event.shiftKey ? 64 : 30;
+      const current = articlePane.getBoundingClientRect().width;
+      if (event.key === "ArrowLeft") {
+        setArticlePaneWidth(current - step);
+        event.preventDefault();
+      } else if (event.key === "ArrowRight") {
+        setArticlePaneWidth(current + step);
+        event.preventDefault();
+      }
+    });
+
+    if (typeof desktopPreviewMedia.addEventListener === "function") {
+      desktopPreviewMedia.addEventListener("change", syncToViewport);
+    } else if (typeof desktopPreviewMedia.addListener === "function") {
+      desktopPreviewMedia.addListener(syncToViewport);
+    }
+    window.addEventListener("resize", syncToViewport, { passive: true });
+    syncToViewport();
+  }
+
   function initMobileMapScrollLock() {
     if (!mapPane) {
       return;
@@ -1863,6 +2223,121 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       }
       event.preventDefault();
     }, { passive: false });
+  }
+
+  function initContextPreview() {
+    if (!contextPreviewPane || !contextPreviewTitle || !contextPreviewMeta || !contextPreviewBody) {
+      return;
+    }
+
+    const syncPreviewByViewport = () => {
+      if (isContextPreviewEnabled()) {
+        renderContextPreviewPlaceholder();
+      } else {
+        activePreviewSource = "";
+        contextPreviewBody.innerHTML = "";
+      }
+    };
+
+    syncPreviewByViewport();
+    if (typeof desktopPreviewMedia.addEventListener === "function") {
+      desktopPreviewMedia.addEventListener("change", syncPreviewByViewport);
+    } else if (typeof desktopPreviewMedia.addListener === "function") {
+      desktopPreviewMedia.addListener(syncPreviewByViewport);
+    }
+  }
+
+  function isContextPreviewEnabled() {
+    return Boolean(contextPreviewPane && contextPreviewTitle && contextPreviewMeta && contextPreviewBody)
+      && desktopPreviewMedia.matches;
+  }
+
+  function clearContextPreview(source) {
+    if (!isContextPreviewEnabled()) {
+      return;
+    }
+    if (source && activePreviewSource && activePreviewSource !== source) {
+      return;
+    }
+    renderContextPreviewPlaceholder();
+  }
+
+  function renderContextPreviewPlaceholder() {
+    if (!contextPreviewTitle || !contextPreviewMeta || !contextPreviewBody) {
+      return;
+    }
+    activePreviewSource = "";
+    contextPreviewTitle.textContent = "";
+    contextPreviewMeta.textContent = "";
+    contextPreviewBody.innerHTML = "";
+  }
+
+  function showContextPreviewForSection(sectionId, options = {}) {
+    if (!isContextPreviewEnabled()) {
+      return;
+    }
+    const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+    if (!(section instanceof HTMLElement)) {
+      return;
+    }
+
+    const title = options.title || getSectionHeading(sectionId);
+    const paragraphs = buildSectionPreviewParagraphs(section);
+    const focusText = trimPreviewText(options.focusText || "", 220);
+
+    contextPreviewTitle.textContent = title || "Context";
+    contextPreviewMeta.textContent = options.meta || "";
+    if (paragraphs.length || focusText) {
+      const blocks = [];
+      if (focusText) {
+        blocks.push(`<p><strong>${escapeHtml(focusText)}</strong></p>`);
+      }
+      for (const paragraph of paragraphs) {
+        blocks.push(`<p>${escapeHtml(paragraph)}</p>`);
+      }
+      contextPreviewBody.innerHTML = blocks.join("");
+    } else {
+      contextPreviewBody.innerHTML = "<p>No preview text available.</p>";
+    }
+
+    activePreviewSource = options.source || "";
+  }
+
+  function buildSectionPreviewParagraphs(section) {
+    const blocks = [...section.querySelectorAll("p, li, blockquote")]
+      .map((el) => trimPreviewText(el.textContent || "", 220))
+      .filter(Boolean);
+    return blocks.slice(0, 3);
+  }
+
+  function getSectionHeading(sectionId) {
+    const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+    if (!(section instanceof HTMLElement)) {
+      return sectionId;
+    }
+    const heading = section.querySelector("h2");
+    if (heading && heading.textContent) {
+      return heading.textContent.trim();
+    }
+    return sectionId;
+  }
+
+  function getPreviewTextFromMarker(marker) {
+    if (!(marker instanceof HTMLElement)) {
+      return "";
+    }
+    return trimPreviewText(marker.textContent || "", 180);
+  }
+
+  function trimPreviewText(value, maxLength) {
+    const normalized = String(value || "").replace(/\s+/g, " ").trim();
+    if (!normalized) {
+      return "";
+    }
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trim()}...`;
   }
 
   async function readJson(path) {
