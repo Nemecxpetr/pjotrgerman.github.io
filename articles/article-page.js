@@ -7,6 +7,9 @@
 
   const titleEl = document.getElementById("article-title");
   const subtitleEl = document.getElementById("article-subtitle");
+  const essayLayout = document.querySelector(".essay-layout");
+  const mapPane = document.querySelector(".map-pane");
+  const paneResizer = document.getElementById("pane-resizer");
   const articlePane = document.getElementById("article-pane");
   const articleContent = document.getElementById("article-content");
   const mapContainer = document.getElementById("mind-map");
@@ -46,6 +49,8 @@
       section.classList.add("article-section");
     });
 
+    initMobileMapScrollLock();
+    initPaneResizer();
     installMap(mapConfig);
     installTextPathHover();
     restoreHash();
@@ -552,6 +557,96 @@
       return null;
     }
     return [parts[0], parts[1], parts[2]];
+  }
+
+  function initPaneResizer() {
+    if (!essayLayout || !mapPane || !paneResizer) {
+      return;
+    }
+
+    const getMinHeights = () => (window.matchMedia("(max-width: 900px)").matches
+      ? { top: 160, bottom: 170 }
+      : { top: 180, bottom: 180 });
+
+    const clampMapHeight = (requested) => {
+      const layoutRect = essayLayout.getBoundingClientRect();
+      const dividerHeight = paneResizer.getBoundingClientRect().height || 10;
+      const mins = getMinHeights();
+      const maxTop = Math.max(mins.top, layoutRect.height - dividerHeight - mins.bottom);
+      return Math.min(maxTop, Math.max(mins.top, requested));
+    };
+
+    const setMapPaneHeight = (pixels) => {
+      const clamped = clampMapHeight(pixels);
+      essayLayout.style.setProperty("--map-pane-size", `${Math.round(clamped)}px`);
+      paneResizer.setAttribute("aria-valuenow", String(Math.round(clamped)));
+      if (network) {
+        network.redraw();
+      }
+    };
+
+    const state = {
+      active: false,
+      startY: 0,
+      startHeight: 0
+    };
+
+    paneResizer.addEventListener("pointerdown", (event) => {
+      state.active = true;
+      state.startY = event.clientY;
+      state.startHeight = mapPane.getBoundingClientRect().height;
+      paneResizer.setPointerCapture(event.pointerId);
+      document.body.classList.add("is-resizing");
+      event.preventDefault();
+    });
+
+    paneResizer.addEventListener("pointermove", (event) => {
+      if (!state.active) {
+        return;
+      }
+      const deltaY = event.clientY - state.startY;
+      setMapPaneHeight(state.startHeight + deltaY);
+    });
+
+    const stopResize = (event) => {
+      if (!state.active) {
+        return;
+      }
+      state.active = false;
+      if (event && paneResizer.hasPointerCapture(event.pointerId)) {
+        paneResizer.releasePointerCapture(event.pointerId);
+      }
+      document.body.classList.remove("is-resizing");
+    };
+
+    paneResizer.addEventListener("pointerup", stopResize);
+    paneResizer.addEventListener("pointercancel", stopResize);
+
+    paneResizer.addEventListener("keydown", (event) => {
+      const step = event.shiftKey ? 42 : 22;
+      const current = mapPane.getBoundingClientRect().height;
+      if (event.key === "ArrowUp") {
+        setMapPaneHeight(current - step);
+        event.preventDefault();
+      } else if (event.key === "ArrowDown") {
+        setMapPaneHeight(current + step);
+        event.preventDefault();
+      }
+    });
+  }
+
+  function initMobileMapScrollLock() {
+    if (!mapPane) {
+      return;
+    }
+
+    const mobileQuery = window.matchMedia("(max-width: 900px)");
+    mapPane.addEventListener("touchmove", (event) => {
+      if (!mobileQuery.matches) {
+        return;
+      }
+      event.preventDefault();
+    }, { passive: false });
   }
 
   async function readJson(path) {

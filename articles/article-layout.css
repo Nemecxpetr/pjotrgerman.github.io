@@ -17,6 +17,8 @@
   --error: #b7372d;
   --text-block-bg: rgba(250, 245, 239, 0.9);
   --font-main: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --pane-divider-size: 12px;
+  --map-pane-size: 50dvh;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,11 +90,13 @@ body {
   z-index: 2;
   height: 100dvh;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows:
+    clamp(180px, var(--map-pane-size), calc(100dvh - 180px - var(--pane-divider-size)))
+    var(--pane-divider-size)
+    minmax(0, 1fr);
 }
 
 .map-pane {
-  border-bottom: 1px solid var(--hairline);
   background: var(--bg);
   padding: 1.25rem 1rem 0.8rem;
   display: grid;
@@ -144,6 +148,37 @@ body {
   margin: 0;
   color: var(--muted);
   font: 400 0.74rem/1.35 var(--font-main);
+}
+
+.pane-resizer {
+  position: relative;
+  touch-action: none;
+  cursor: row-resize;
+  background: transparent;
+}
+
+.pane-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 50% 16px auto 16px;
+  transform: translateY(-50%);
+  height: 2px;
+  border-radius: 999px;
+  background: var(--hairline);
+}
+
+.pane-resizer:hover::before,
+.pane-resizer:focus-visible::before {
+  background: var(--accent-blue);
+}
+
+.pane-resizer:focus-visible {
+  outline: none;
+}
+
+.is-resizing,
+.is-resizing * {
+  user-select: none !important;
 }
 
 .article-pane {
@@ -282,7 +317,18 @@ body {
 
 @media (max-width: 900px) {
   .essay-layout {
-    grid-template-rows: minmax(220px, 33dvh) minmax(0, 1fr);
+    --pane-divider-size: 10px;
+    --map-pane-size: 50dvh;
+    grid-template-rows:
+      clamp(160px, var(--map-pane-size), calc(100dvh - 170px - var(--pane-divider-size)))
+      var(--pane-divider-size)
+      minmax(0, 1fr);
+  }
+
+  .map-pane,
+  .mind-map {
+    touch-action: none;
+    overscroll-behavior: contain;
   }
 
   .map-pane {
