@@ -29,9 +29,12 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let nodeBaseSizeById = new Map();
   let sectionEls = [];
   let edgeDataSet = null;
+  let edgeIdByPairKey = new Map();
   let edgeIdsByNodeId = new Map();
   let edgeWaveStateById = new Map();
   let nodeWaveStateById = new Map();
+  let highlightedEdgeIds = new Set();
+  let highlightedNodeIds = new Set();
   let selectedSectionId = null;
   let mapIsInteracting = false;
   let mapZoomIdleTimer = null;
@@ -326,6 +329,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function buildMapEdges(rawEdges) {
+    edgeIdByPairKey = new Map();
     edgeIdsByNodeId = new Map();
     if (!Array.isArray(rawEdges)) {
       return [];
@@ -339,6 +343,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
       const from = String(normalized.from);
       const to = String(normalized.to);
+      edgeIdByPairKey.set(`${from}->${to}`, normalized.id);
+      edgeIdByPairKey.set(`${to}->${from}`, normalized.id);
       if (!edgeIdsByNodeId.has(from)) {
         edgeIdsByNodeId.set(from, []);
       }
@@ -356,18 +362,61 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     markers.forEach((marker) => {
       marker.classList.add("graph-mention");
       const pathSpec = marker.dataset.graphPath || "";
+      const edgeIds = resolveEdgeIdsForMarker(pathSpec);
       const nodeIds = resolveNodeIdsForPath(pathSpec);
-      if (!nodeIds.length) {
+      if (!nodeIds.length && !edgeIds.length) {
         return;
       }
 
       const onEnter = () => {
+        marker.classList.add("is-active");
+        setHighlightedPath(edgeIds, nodeIds);
         centerGraphOnNodes(nodeIds);
+      };
+      const onLeave = () => {
+        marker.classList.remove("is-active");
+        clearHighlightedPath();
       };
 
       marker.addEventListener("mouseenter", onEnter);
+      marker.addEventListener("mouseleave", onLeave);
       marker.addEventListener("focus", onEnter);
+      marker.addEventListener("blur", onLeave);
     });
+  }
+
+  function resolveEdgeIdsForMarker(pathSpec) {
+    if (!pathSpec) {
+      return [];
+    }
+
+    const ids = new Set();
+    const fragments = pathSpec
+      .split(/[;,]+/)
+      .map((fragment) => fragment.trim())
+      .filter(Boolean);
+
+    for (const fragment of fragments) {
+      const chain = fragment
+        .replaceAll("->", ">")
+        .split(">")
+        .map((nodeId) => nodeId.trim())
+        .filter(Boolean);
+
+      if (chain.length < 2) {
+        continue;
+      }
+
+      for (let i = 0; i < chain.length - 1; i += 1) {
+        const key = `${chain[i]}->${chain[i + 1]}`;
+        const edgeId = edgeIdByPairKey.get(key);
+        if (edgeId !== undefined) {
+          ids.add(edgeId);
+        }
+      }
+    }
+
+    return [...ids];
   }
 
   function resolveNodeIdsForPath(pathSpec) {
@@ -413,6 +462,22 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       nodes: nodeIds,
       animation: { duration: 240, easingFunction: "easeInOutQuad" }
     });
+  }
+
+  function setHighlightedPath(edgeIds, nodeIds) {
+    highlightedEdgeIds = new Set(Array.isArray(edgeIds) ? edgeIds : []);
+    highlightedNodeIds = new Set(Array.isArray(nodeIds) ? nodeIds : []);
+    if (network) {
+      network.redraw();
+    }
+  }
+
+  function clearHighlightedPath() {
+    highlightedEdgeIds = new Set();
+    highlightedNodeIds = new Set();
+    if (network) {
+      network.redraw();
+    }
   }
 
   function triggerEdgeWave(edgeId, strength) {
@@ -564,9 +629,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       const waveState = ensureEdgeWaveState(edgeId);
       const waveAmplitude = waveState.amplitude * 7.5 + motionBoost * 0.22;
       const bowAmplitude = clampNumber(distance * 0.012 + motionBoost * 0.45, 2.2, 13);
-      const strokeColor = getEdgeStrokeColor(edge);
+      const isPathHighlighted = highlightedEdgeIds.has(edgeId);
+      const strokeColor = getEdgeStrokeColor(edge, isPathHighlighted);
       const baseWidth = Number(edge.width) || 1.25;
-      const strokeWidth = baseWidth;
+      const strokeWidth = baseWidth + (isPathHighlighted ? 0.35 : 0);
 
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = strokeWidth;
@@ -589,12 +655,76 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         }
       }
       ctx.stroke();
+
+      if (isPathHighlighted) {
+        ctx.save();
+        ctx.strokeStyle = toRgbaColor(theme.accentBlue, 0.34);
+        ctx.lineWidth = strokeWidth + 2.6;
+        ctx.shadowColor = toRgbaColor(theme.accentBlue, 0.7);
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let i = 0; i <= segments; i += 1) {
+          const t = i / segments;
+          const envelope = Math.sin(Math.PI * t);
+          const baseX = lerpNumber(startX, endX, t);
+          const baseY = lerpNumber(startY, endY, t);
+          const wave = Math.sin((t * Math.PI * 2.2) + waveState.phase) * waveAmplitude * envelope;
+          const offset = bowAmplitude * envelope + wave;
+          const x = baseX + normalX * offset;
+          const y = baseY + normalY * offset;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
+    drawHighlightedPathNodes(ctx, positions);
     drawNodeImpulses(ctx, positions);
 
     ctx.restore();
     lastStringDrawAt = ts;
+  }
+
+  function drawHighlightedPathNodes(ctx, positions) {
+    if (!highlightedNodeIds.size) {
+      return;
+    }
+
+    for (const nodeId of highlightedNodeIds) {
+      const pos = positions[nodeId];
+      if (!pos) {
+        continue;
+      }
+      const radius = getNodeRadius(nodeId);
+      const outer = radius + 6.5;
+      const inner = radius + 2.6;
+
+      ctx.fillStyle = toRgbaColor(theme.accentBlue, 0.12);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius + 4.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = toRgbaColor(theme.accentBlue, 0.42);
+      ctx.shadowColor = toRgbaColor(theme.accentBlue, 0.72);
+      ctx.shadowBlur = 7;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, outer, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = toRgbaColor(theme.accentBlue, 0.62);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, inner, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   function drawNodeImpulses(ctx, positions) {
@@ -719,7 +849,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     };
   }
 
-  function getEdgeStrokeColor(edge) {
+  function getEdgeStrokeColor(edge, isPathHighlighted) {
+    if (isPathHighlighted) {
+      return toRgbaColor(theme.accentBlue, 0.95);
+    }
     return theme.edge;
   }
 

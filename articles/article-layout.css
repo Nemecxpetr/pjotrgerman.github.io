@@ -267,7 +267,14 @@ body {
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 0.18em;
-  transition: text-decoration-color 140ms ease;
+  transition: background-color 140ms ease, text-decoration-color 140ms ease;
+}
+
+.graph-mention:hover,
+.graph-mention:focus-visible,
+.graph-mention.is-active {
+  text-decoration-style: solid;
+  background: var(--focus);
 }
 
 .loading,
