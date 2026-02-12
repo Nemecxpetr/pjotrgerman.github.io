@@ -45,8 +45,8 @@ export function initBackgroundFx({
 
   const maskImg = document.getElementById(maskImgId);
   const contentWrap = document.querySelector(wrapSelector);
-  const activeZoneEl = activeZoneSelector ? document.querySelector(activeZoneSelector) : null;
-  const maskAreaEl = maskAreaSelector ? document.querySelector(maskAreaSelector) : null;
+  const activeZoneEls = queryElements(activeZoneSelector);
+  const maskAreaEls = queryElements(maskAreaSelector);
   const secretVideoBlock = document.getElementById("secret-video-block");
   const secretVideoFrame = document.getElementById("secret-video-frame");
   const secretVideoStatus = document.getElementById("secret-video-status");
@@ -296,8 +296,8 @@ export function initBackgroundFx({
   }
 
   function isMiniGameArea(clientX, clientY, target) {
-    if (activeZoneEl) {
-      return isPointInsideElement(clientX, clientY, activeZoneEl);
+    if (activeZoneEls.length) {
+      return activeZoneEls.some((el) => isPointInsideElement(clientX, clientY, el));
     }
     if (clientY >= h - settings.bottomDeadZonePx) {
       return false;
@@ -351,6 +351,17 @@ export function initBackgroundFx({
       clientY >= rect.top &&
       clientY <= rect.bottom
     );
+  }
+
+  function queryElements(selector) {
+    if (!selector || typeof selector !== "string") {
+      return [];
+    }
+    try {
+      return [...document.querySelectorAll(selector)];
+    } catch (_err) {
+      return [];
+    }
   }
 
   function updateSecretStatus() {
@@ -451,14 +462,12 @@ export function initBackgroundFx({
     }
   }
 
-  function getImagePlacement() {
+  function getImagePlacement(screenX, screenY) {
     if (!maskW || !maskH) {
       return null;
     }
 
-    const zoneRect = maskAreaEl
-      ? maskAreaEl.getBoundingClientRect()
-      : { left: 0, top: 0, width: w, height: h };
+    const zoneRect = getMaskZoneRect(screenX, screenY);
     if (!zoneRect.width || !zoneRect.height) {
       return null;
     }
@@ -476,6 +485,38 @@ export function initBackgroundFx({
     };
   }
 
+  function getMaskZoneRect(screenX, screenY) {
+    if (!maskAreaEls.length) {
+      return { left: 0, top: 0, width: w, height: h };
+    }
+
+    let fallbackRect = null;
+    for (const el of maskAreaEls) {
+      if (!(el instanceof Element)) {
+        continue;
+      }
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) {
+        continue;
+      }
+      if (!fallbackRect) {
+        fallbackRect = rect;
+      }
+      if (
+        Number.isFinite(screenX) &&
+        Number.isFinite(screenY) &&
+        screenX >= rect.left &&
+        screenX <= rect.right &&
+        screenY >= rect.top &&
+        screenY <= rect.bottom
+      ) {
+        return rect;
+      }
+    }
+
+    return fallbackRect || { left: 0, top: 0, width: w, height: h };
+  }
+
   /**
    * Sample local darkness around a screen coordinate.
    * Dark regions in the mask are used as accent trigger zones.
@@ -485,7 +526,7 @@ export function initBackgroundFx({
       return { hit: false, strength: 0 };
     }
 
-    const placement = getImagePlacement();
+    const placement = getImagePlacement(screenX, screenY);
     if (!placement) {
       return { hit: false, strength: 0 };
     }

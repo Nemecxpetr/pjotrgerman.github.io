@@ -7,12 +7,13 @@
  * - Release: larger for bigger dots, shorter for smaller dots
  * - Loudness: bigger dot louder, smaller dot quieter
  */
+const GLOBAL_VOLUME = 0.92;
 
 const PLUCK_SETTINGS = {
   samples: 4096,
   attackSamples: 24,
   minReleaseSamples: 420,
-  outputGainScale: 0.5,
+  outputGainScale: GLOBAL_VOLUME,
   brownStep: 0.06,
   brownLeak: 0.985,
   combDelaySec: 0.0035,
@@ -32,14 +33,14 @@ const SINE_SETTINGS = {
   maxFrequencyHz: 880,
   attackSec: 0.01,
   releaseSec: 0.22,
-  gain: 0.022
+  gain: GLOBAL_VOLUME
 };
 
 const SAFETY_SETTINGS = {
   postResumeMuteMs: 120,
   minPluckIntervalMs: 12,
   minSineIntervalMs: 18,
-  masterGain: 0.82
+  masterGain: GLOBAL_VOLUME
 };
 
 let audioCtx = null;
