@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "title": "Postoj ke zvukovemu v ramci hudebni sceny CR",
+    "subtitle": "",
+    "author": "Ing. Petr Němec",
+    "updated": "2026-02-12"
+  },
+  "nodes": [
+    { "id": "zvuk", "label": "Zvuk", "section": "zvuk", "size": 20, "importance": 1 },
+    { "id": "hudba", "label": "Hudba", "section": "hudba", "size": 19, "importance": 2 },
+    { "id": "listening", "label": "Poslech", "section": "listening", "size": 18, "importance": 2 },
+    { "id": "budoucnost", "label": "Budoucnost", "section": "budoucnost", "size": 18, "importance": 4 },
+    { "id": "akce", "label": "Akce", "section": "akce", "size": 18, "importance": 3 },
+    { "id": "zkusenosti", "label": "Zkusenosti", "section": "zkusenosti", "size": 18, "importance": 5 },
+    { "id": "field", "label": "Field Recording", "section": "field", "size": 18, "importance": 3 },
+    { "id": "prostor", "label": "Prostor", "section": "prostor", "size": 19, "importance": 4 }
+  ],
+  "edges": [
+    { "from": "zvuk", "to": "hudba" },
+    { "from": "zvuk", "to": "field" },
+    { "from": "zvuk", "to": "prostor" },
+    { "from": "zvuk", "to": "akce" },
+    { "from": "zvuk", "to": "listening" },
+    { "from": "listening", "to": "akce" },
+    { "from": "listening", "to": "budoucnost" },
+    { "from": "akce", "to": "zkusenosti" },
+    { "from": "akce", "to": "budoucnost" },
+    { "from": "hudba", "to": "zkusenosti" },
+    { "from": "hudba", "to": "budoucnost" },
+    { "from": "field", "to": "zkusenosti" },
+    { "from": "field", "to": "prostor" }
+  ]
+}

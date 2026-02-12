@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "title": "Article Title",
+    "subtitle": "Short context for this draft",
+    "author": "Your Name",
+    "updated": "YYYY-MM-DD"
+  },
+  "nodes": [
+    { "id": "start", "label": "Start", "section": "start", "size": 20, "importance": 1 },
+    { "id": "thread-a", "label": "Thread A", "section": "thread-a", "size": 18, "importance": 2 },
+    { "id": "thread-b", "label": "Thread B", "section": "thread-b", "size": 18, "importance": 3 },
+    { "id": "ending", "label": "Ending", "section": "ending", "size": 20, "importance": 4 }
+  ],
+  "edges": [
+    { "from": "start", "to": "thread-a" },
+    { "from": "start", "to": "thread-b" },
+    { "from": "thread-a", "to": "ending" },
+    { "from": "thread-b", "to": "ending" }
+  ]
+}

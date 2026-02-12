@@ -26,6 +26,10 @@ function initYearLabel() {
 }
 
 function initSoundToggle() {
+  if (document.body?.dataset.soundToggle === "off") {
+    return;
+  }
+
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.className = "sound-toggle";
@@ -77,15 +81,49 @@ function initSoundToggle() {
   }
 }
 
+function getBackgroundFxOptions() {
+  const canvas = document.getElementById("fx");
+  const options = {
+    playPluck,
+    playSineTone
+  };
+
+  if (!canvas) {
+    return options;
+  }
+
+  const { wordPoolUrl, wrapSelector, maskImgId } = canvas.dataset;
+  if (wordPoolUrl) {
+    options.wordPoolUrl = wordPoolUrl;
+  }
+  if (wrapSelector) {
+    options.wrapSelector = wrapSelector;
+  }
+  if (maskImgId) {
+    options.maskImgId = maskImgId;
+  }
+  if (canvas.dataset.activeZoneSelector) {
+    options.activeZoneSelector = canvas.dataset.activeZoneSelector;
+  }
+  if (canvas.dataset.maskAreaSelector) {
+    options.maskAreaSelector = canvas.dataset.maskAreaSelector;
+  }
+  if (canvas.dataset.wordSourceSelector) {
+    options.wordSourceSelector = canvas.dataset.wordSourceSelector;
+  }
+  if (canvas.dataset.emitOnlyMiniMode) {
+    options.emitOnlyInMiniMode = canvas.dataset.emitOnlyMiniMode === "true";
+  }
+
+  return options;
+}
+
 function bootstrap() {
   initYearLabel();
   initReleases();
   initSoundToggle();
 
-  initBackgroundFx({
-    playPluck,
-    playSineTone
-  });
+  initBackgroundFx(getBackgroundFxOptions());
 }
 
 bootstrap();

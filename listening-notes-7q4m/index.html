@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="description" content="Unlisted research article with interactive keyword map." />
+  <title>Listening Notes</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/vis-network@9.1.9/styles/vis-network.min.css" />
+  <link rel="stylesheet" href="article-layout.css" />
+</head>
+<body>
+  <div class="mask-layer" aria-hidden="true">
+    <img id="maskImg" class="mask-img" src="../assets/background.jpg" alt="" decoding="async" />
+  </div>
+  <canvas
+    id="fx"
+    data-wrap-selector=".essay-layout"
+    data-active-zone-selector=".article-pane"
+    data-mask-area-selector=".article-pane"
+    data-word-source-selector="#article-content"
+    data-emit-only-mini-mode="true"
+    aria-hidden="true">
+  </canvas>
+
+  <main class="essay-layout">
+    <section class="map-pane" aria-label="Keyword map">
+      <header class="map-header">
+        <p class="eyebrow">Unlisted Essay</p>
+        <h1 id="article-title">Loading article...</h1>
+        <p class="subtitle" id="article-subtitle"></p>
+      </header>
+      <div id="mind-map" class="mind-map"></div>
+      <p class="map-help">Drag nodes to reorganize. Click a term to jump to its section.</p>
+    </section>
+
+    <section class="article-pane" id="article-pane" aria-label="Article text">
+      <div id="article-content" class="article-content">
+        <p class="loading">Loading content...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <script type="module" src="../main.js"></script>
+  <script src="article-page.js"></script>
+</body>
+</html>

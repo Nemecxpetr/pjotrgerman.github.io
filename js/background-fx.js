@@ -16,6 +16,10 @@ const ACCENT_COLOR = "29,170,218";
  *   canvasId?: string,
  *   maskImgId?: string,
  *   wrapSelector?: string,
+ *   activeZoneSelector?: string,
+ *   maskAreaSelector?: string,
+ *   wordSourceSelector?: string,
+ *   emitOnlyInMiniMode?: boolean,
  *   wordPoolUrl?: string,
  *   playPluck?: (size:number, sizeRange:{min:number,max:number}) => void,
  *   playSineTone?: (frequencyHz:number) => void
@@ -25,6 +29,10 @@ export function initBackgroundFx({
   canvasId = "fx",
   maskImgId = "maskImg",
   wrapSelector = ".wrap",
+  activeZoneSelector = "",
+  maskAreaSelector = "",
+  wordSourceSelector = "",
+  emitOnlyInMiniMode = false,
   wordPoolUrl = "assets/wordpool.txt",
   playPluck = () => {},
   playSineTone = () => {}
@@ -37,6 +45,8 @@ export function initBackgroundFx({
 
   const maskImg = document.getElementById(maskImgId);
   const contentWrap = document.querySelector(wrapSelector);
+  const activeZoneEl = activeZoneSelector ? document.querySelector(activeZoneSelector) : null;
+  const maskAreaEl = maskAreaSelector ? document.querySelector(maskAreaSelector) : null;
   const secretVideoBlock = document.getElementById("secret-video-block");
   const secretVideoFrame = document.getElementById("secret-video-frame");
   const secretVideoStatus = document.getElementById("secret-video-status");
@@ -155,32 +165,79 @@ export function initBackgroundFx({
     lastWordY = null;
   }
 
+  function extractWords(text) {
+    if (typeof text !== "string" || !text.trim()) {
+      return [];
+    }
+
+    return text
+      .split(/\s+/)
+      .map((raw) => raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").trim())
+      .filter((word) => {
+        if (!word) {
+          return false;
+        }
+        const lower = word.toLowerCase();
+        if (lower === "the") {
+          return false;
+        }
+        return !/^\d+$/.test(word) && /^\p{L}[\p{L}\p{N}-]*$/u.test(word);
+      });
+  }
+
+  function setWordPoolFromText(text) {
+    const words = extractWords(text);
+    wordPool = words.length ? words : null;
+    resetWordShuffle();
+    resetWordOrder();
+    return Boolean(wordPool && wordPool.length);
+  }
+
+  function loadWordPoolFromDom() {
+    if (!wordSourceSelector) {
+      return false;
+    }
+    const sourceEl = document.querySelector(wordSourceSelector);
+    if (!sourceEl) {
+      return false;
+    }
+    return setWordPoolFromText(sourceEl.textContent || "");
+  }
+
   async function loadWordPool() {
+    if (wordSourceSelector) {
+      loadWordPoolFromDom();
+      return;
+    }
+
     try {
       const resp = await fetch(wordPoolUrl, { cache: "no-store" });
       const text = resp.ok ? await resp.text() : "";
-      const words = text
-        .split(/\s+/)
-        .map((word) => word.trim())
-        .filter((word) => {
-          if (!word) {
-            return false;
-          }
-          const lower = word.toLowerCase();
-          if (lower === "the") {
-            return false;
-          }
-          return !/^\d+$/.test(word);
-        })
-        .filter((word) => /^[A-Za-z]+$/.test(word));
-
-      wordPool = words.length ? words : null;
+      setWordPoolFromText(text);
     } catch (_err) {
       wordPool = null;
+      resetWordShuffle();
+      resetWordOrder();
+    }
+  }
+
+  function observeWordSource() {
+    if (!wordSourceSelector) {
+      return;
+    }
+    const sourceEl = document.querySelector(wordSourceSelector);
+    if (!sourceEl) {
+      return;
     }
 
-    resetWordShuffle();
-    resetWordOrder();
+    const observer = new MutationObserver(() => {
+      loadWordPoolFromDom();
+    });
+    observer.observe(sourceEl, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
   }
 
   function setWordsActive(next) {
@@ -237,6 +294,9 @@ export function initBackgroundFx({
   }
 
   function isMiniGameArea(clientX, clientY, target) {
+    if (activeZoneEl) {
+      return isPointInsideElement(clientX, clientY, activeZoneEl);
+    }
     if (clientY >= h - settings.bottomDeadZonePx) {
       return false;
     }
@@ -394,14 +454,21 @@ export function initBackgroundFx({
       return null;
     }
 
-    const scale = Math.max(w / maskW, h / maskH);
+    const zoneRect = maskAreaEl
+      ? maskAreaEl.getBoundingClientRect()
+      : { left: 0, top: 0, width: w, height: h };
+    if (!zoneRect.width || !zoneRect.height) {
+      return null;
+    }
+
+    const scale = Math.max(zoneRect.width / maskW, zoneRect.height / maskH);
     const drawW = maskW * scale;
     const drawH = maskH * scale;
 
     return {
       scale,
-      offsetX: (w - drawW) * 0.5,
-      offsetY: (h - drawH) * 0.5,
+      offsetX: zoneRect.left + (zoneRect.width - drawW) * 0.5,
+      offsetY: zoneRect.top + (zoneRect.height - drawH) * 0.5,
       drawW,
       drawH
     };
@@ -635,6 +702,10 @@ export function initBackgroundFx({
   }
 
   function tryEmitWord(x, y, size, ts) {
+    if ((!wordPool || wordPool.length === 0) && wordSourceSelector) {
+      loadWordPoolFromDom();
+    }
+
     if (!wordsActive || !wordPool || wordPool.length === 0) {
       return "not_applicable";
     }
@@ -820,7 +891,11 @@ export function initBackgroundFx({
     const dx = pointer.x - lastEmitX;
     const dy = pointer.y - lastEmitY;
     const emitDistSq = dx * dx + dy * dy;
-    const shouldEmit = !gameStopped && pointer.active && (emitDistSq > spacing * spacing || ts - lastEmitAt > idleEmitMs);
+    const zoneEnabled = !emitOnlyInMiniMode || miniModeActive || secretZoneActive;
+    const shouldEmit = !gameStopped
+      && zoneEnabled
+      && pointer.active
+      && (emitDistSq > spacing * spacing || ts - lastEmitAt > idleEmitMs);
 
     if (shouldEmit) {
       const accentInfo = sampleMaskAt(pointer.x, pointer.y);
@@ -955,6 +1030,7 @@ export function initBackgroundFx({
   }
 
   updateWordFont();
+  observeWordSource();
   loadWordPool();
   updateSecretStatus();
   resizeCanvas();
