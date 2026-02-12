@@ -116,7 +116,9 @@ export function initBackgroundFx({
     maxLoopBpm: 100,
     secretGoalShapes: 3,
     secretTargetLengthPx: 220,
-    secretLengthTolerancePx: 60
+    secretLengthTolerancePx: 60,
+    maxConnectionTriggersPerTick: 2,
+    resumeGapMs: 800
   };
 
   let dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -616,6 +618,7 @@ export function initBackgroundFx({
         intervalMs,
         nextPlayAt: soundType === "sine" ? ts + intervalMs : ts,
         nextAnchorIndex: 0,
+        lastTickAt: ts,
         isLengthMatch,
         soundType,
         sineFrequencyHz
@@ -751,7 +754,18 @@ export function initBackgroundFx({
 
     for (let i = 0; i < lockedConnections.length; i += 1) {
       const connection = lockedConnections[i];
-      while (ts >= connection.nextPlayAt) {
+      const gapMs = ts - (connection.lastTickAt || ts);
+      connection.lastTickAt = ts;
+
+      // Returning to a tab after inactivity can produce a huge backlog.
+      // Skip missed cycles instead of emitting an audio burst.
+      if (gapMs > settings.resumeGapMs) {
+        connection.nextPlayAt = ts + connection.intervalMs;
+        continue;
+      }
+
+      let triggers = 0;
+      while (ts >= connection.nextPlayAt && triggers < settings.maxConnectionTriggersPerTick) {
         if (connection.soundType === "sine") {
           playSineTone(connection.sineFrequencyHz);
         } else {
@@ -764,6 +778,11 @@ export function initBackgroundFx({
 
         connection.nextAnchorIndex = connection.nextAnchorIndex === 0 ? 1 : 0;
         connection.nextPlayAt += connection.intervalMs;
+        triggers += 1;
+      }
+
+      if (ts >= connection.nextPlayAt) {
+        connection.nextPlayAt = ts + connection.intervalMs;
       }
     }
   }

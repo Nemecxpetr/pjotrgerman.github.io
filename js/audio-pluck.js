@@ -35,9 +35,21 @@ const SINE_SETTINGS = {
   gain: 0.022
 };
 
+const SAFETY_SETTINGS = {
+  postResumeMuteMs: 120,
+  minPluckIntervalMs: 12,
+  minSineIntervalMs: 18,
+  masterGain: 0.82
+};
+
 let audioCtx = null;
 let reverbChain = null;
 let audioEnabled = false;
+let visibilityGuardInstalled = false;
+let autoSuspendedForHidden = false;
+let audioReadyAtMs = 0;
+let lastPluckAtMs = -Infinity;
+let lastSineAtMs = -Infinity;
 
 function getAudioContext() {
   if (audioCtx) {
@@ -50,7 +62,36 @@ function getAudioContext() {
   }
 
   audioCtx = new AudioCtor();
+  installVisibilityGuard();
   return audioCtx;
+}
+
+function installVisibilityGuard() {
+  if (visibilityGuardInstalled || typeof document === "undefined") {
+    return;
+  }
+  visibilityGuardInstalled = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (!audioCtx) {
+      return;
+    }
+
+    if (document.hidden) {
+      if (audioCtx.state === "running") {
+        autoSuspendedForHidden = true;
+        audioCtx.suspend().catch(() => {});
+      }
+      return;
+    }
+
+    if (audioEnabled && autoSuspendedForHidden && audioCtx.state === "suspended") {
+      audioCtx.resume().then(() => {
+        audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+      }).catch(() => {});
+    }
+    autoSuspendedForHidden = false;
+  });
 }
 
 function sizeToUnit(size, minSize, maxSize) {
@@ -86,17 +127,27 @@ function getReverbInput(ac) {
   const dryGain = ac.createGain();
   const wetGain = ac.createGain();
   const convolver = ac.createConvolver();
+  const masterGain = ac.createGain();
+  const limiter = ac.createDynamicsCompressor();
 
   convolver.buffer = createImpulseResponse(ac);
   dryGain.gain.value = REVERB_SETTINGS.dryMix;
   wetGain.gain.value = REVERB_SETTINGS.wetMix;
+  masterGain.gain.value = SAFETY_SETTINGS.masterGain;
+  limiter.threshold.value = -18;
+  limiter.knee.value = 12;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.25;
 
   input.connect(dryGain);
-  dryGain.connect(ac.destination);
+  dryGain.connect(masterGain);
 
   input.connect(convolver);
   convolver.connect(wetGain);
-  wetGain.connect(ac.destination);
+  wetGain.connect(masterGain);
+  masterGain.connect(limiter);
+  limiter.connect(ac.destination);
 
   reverbChain = {
     ac,
@@ -118,7 +169,9 @@ export function unlockAudioContext() {
     return;
   }
   if (ac.state === "suspended") {
-    ac.resume().catch(() => {});
+    ac.resume().then(() => {
+      audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+    }).catch(() => {});
   }
 }
 
@@ -130,11 +183,16 @@ export function setAudioEnabled(nextEnabled) {
   audioEnabled = Boolean(nextEnabled);
 
   if (!audioCtx) {
+    if (audioEnabled) {
+      audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+    }
     return;
   }
 
   if (audioEnabled && audioCtx.state === "suspended") {
-    audioCtx.resume().catch(() => {});
+    audioCtx.resume().then(() => {
+      audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+    }).catch(() => {});
   } else if (!audioEnabled && audioCtx.state === "running") {
     audioCtx.suspend().catch(() => {});
   }
@@ -149,6 +207,11 @@ export function playPluck(size, sizeRange = { min: 1, max: 10 }) {
   if (!audioEnabled) {
     return;
   }
+  const nowMs = performance.now();
+  if (nowMs < audioReadyAtMs || nowMs - lastPluckAtMs < SAFETY_SETTINGS.minPluckIntervalMs) {
+    return;
+  }
+  lastPluckAtMs = nowMs;
   const ac = getAudioContext();
   if (!ac || ac.state !== "running") {
     return;
@@ -206,6 +269,11 @@ export function playSineTone(frequencyHz) {
   if (!audioEnabled) {
     return;
   }
+  const nowMs = performance.now();
+  if (nowMs < audioReadyAtMs || nowMs - lastSineAtMs < SAFETY_SETTINGS.minSineIntervalMs) {
+    return;
+  }
+  lastSineAtMs = nowMs;
   const ac = getAudioContext();
   if (!ac || ac.state !== "running") {
     return;
