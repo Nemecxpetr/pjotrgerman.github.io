@@ -1,5 +1,13 @@
+import { playPluck, playSineTone } from "../js/audio-pluck.js";
+
 (function () {
   const DEFAULT_ARTICLE = "czech-scene-sound";
+  const EDGE_BASE_WIDTH = 0.9;
+  const EDGE_HIT_COLOR = "rgba(0, 0, 0, 0)";
+  const EDGE_WAVE_DAMPING = 0.0105;
+  const NODE_WAVE_DAMPING = 0.009;
+  const EDGE_WAVE_SPEED = 0.018;
+  const NODE_WAVE_SPEED = 0.02;
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
 
@@ -21,11 +29,26 @@
   let nodeBaseSizeById = new Map();
   let sectionEls = [];
   let edgeDataSet = null;
-  let edgeIdByPairKey = new Map();
-  let highlightedEdgeIds = new Set();
+  let edgeIdsByNodeId = new Map();
+  let edgeWaveStateById = new Map();
+  let nodeWaveStateById = new Map();
   let selectedSectionId = null;
   let mapIsInteracting = false;
   let mapZoomIdleTimer = null;
+  let hoveredEdgeId = null;
+  let edgeWaveFrameId = null;
+  let edgeWaveLastTick = 0;
+  let lastStringDrawAt = 0;
+  let nodeMotionById = new Map();
+  let prevNodePositionById = new Map();
+  let edgeLastSoundAtById = new Map();
+  let pointerSpeedPxMs = 0;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
+  let lastPointerAt = 0;
+  let lastNodeImpulseId = null;
+  let lastNodeImpulseAt = 0;
+  let nodeSizeRange = { min: 10, max: 24 };
   let pulsingNodeId = null;
   let pulseFrameId = null;
   let pulsePhase = 0;
@@ -100,6 +123,7 @@
         size: baseSize
       };
     });
+    nodeSizeRange = getNodeSizeRange();
 
     const edges = buildMapEdges(mapConfig.edges);
     edgeDataSet = new vis.DataSet(edges);
@@ -114,6 +138,7 @@
       autoResize: true,
       interaction: {
         hover: true,
+        hoverConnectedEdges: false,
         dragNodes: true,
         dragView: true,
         zoomView: true
@@ -138,12 +163,25 @@
       },
       edges: {
         color: {
-          color: theme.edge,
-          highlight: theme.edgeHighlight
+          color: "#000000",
+          highlight: "#000000",
+          hover: "#000000",
+          inherit: false,
+          opacity: 0
         },
-        width: 1.25,
+        width: 10,
+        hoverWidth: 0,
+        selectionWidth: 0,
+        chosen: {
+          edge(values) {
+            values.color = EDGE_HIT_COLOR;
+            values.width = 0;
+          }
+        },
         smooth: {
-          type: "dynamic"
+          enabled: true,
+          type: "continuous",
+          roundness: 0.16
         }
       }
     });
@@ -152,8 +190,11 @@
       network.setOptions({ physics: { enabled: false } });
     });
 
+    initMapImpulseTracking();
+
     network.on("dragStart", () => {
       mapIsInteracting = true;
+      startEdgeWaveLoop();
     });
 
     network.on("dragEnd", () => {
@@ -168,6 +209,38 @@
       mapZoomIdleTimer = window.setTimeout(() => {
         mapIsInteracting = false;
       }, 140);
+    });
+
+    network.on("hoverEdge", (params) => {
+      hoveredEdgeId = params && params.edge ? params.edge : null;
+      if (hoveredEdgeId) {
+        triggerEdgeWave(hoveredEdgeId, getPointerImpulseStrength() * 0.85);
+      }
+      startEdgeWaveLoop();
+    });
+
+    network.on("blurEdge", () => {
+      hoveredEdgeId = null;
+      network.redraw();
+    });
+
+    network.on("hoverNode", (params) => {
+      const nodeId = params && params.node ? params.node : null;
+      if (!nodeId) {
+        return;
+      }
+      const now = performance.now();
+      if (nodeId === lastNodeImpulseId && now - lastNodeImpulseAt < 120) {
+        return;
+      }
+      lastNodeImpulseId = nodeId;
+      lastNodeImpulseAt = now;
+      triggerNodeImpulse(nodeId, getPointerImpulseStrength());
+      startEdgeWaveLoop();
+    });
+
+    network.on("afterDrawing", (ctx) => {
+      drawStringEdges(ctx);
     });
 
     network.on("click", (params) => {
@@ -200,7 +273,6 @@
     }
 
     selectedSectionId = sectionId;
-    setHighlightedEdges([]);
 
     for (const section of sectionEls) {
       const isActive = section.id === sectionId;
@@ -254,7 +326,7 @@
   }
 
   function buildMapEdges(rawEdges) {
-    edgeIdByPairKey = new Map();
+    edgeIdsByNodeId = new Map();
     if (!Array.isArray(rawEdges)) {
       return [];
     }
@@ -267,8 +339,14 @@
 
       const from = String(normalized.from);
       const to = String(normalized.to);
-      edgeIdByPairKey.set(`${from}->${to}`, normalized.id);
-      edgeIdByPairKey.set(`${to}->${from}`, normalized.id);
+      if (!edgeIdsByNodeId.has(from)) {
+        edgeIdsByNodeId.set(from, []);
+      }
+      if (!edgeIdsByNodeId.has(to)) {
+        edgeIdsByNodeId.set(to, []);
+      }
+      edgeIdsByNodeId.get(from).push(normalized.id);
+      edgeIdsByNodeId.get(to).push(normalized.id);
       return normalized;
     });
   }
@@ -278,61 +356,18 @@
     markers.forEach((marker) => {
       marker.classList.add("graph-mention");
       const pathSpec = marker.dataset.graphPath || "";
-      const edgeIds = resolveEdgeIdsForMarker(pathSpec);
       const nodeIds = resolveNodeIdsForPath(pathSpec);
-      if (!edgeIds.length) {
+      if (!nodeIds.length) {
         return;
       }
 
       const onEnter = () => {
-        marker.classList.add("is-active");
-        setHighlightedEdges(edgeIds);
         centerGraphOnNodes(nodeIds);
-      };
-      const onLeave = () => {
-        marker.classList.remove("is-active");
-        setHighlightedEdges([]);
       };
 
       marker.addEventListener("mouseenter", onEnter);
-      marker.addEventListener("mouseleave", onLeave);
       marker.addEventListener("focus", onEnter);
-      marker.addEventListener("blur", onLeave);
     });
-  }
-
-  function resolveEdgeIdsForMarker(pathSpec) {
-    if (!pathSpec) {
-      return [];
-    }
-
-    const ids = new Set();
-    const fragments = pathSpec
-      .split(/[;,]+/)
-      .map((fragment) => fragment.trim())
-      .filter(Boolean);
-
-    for (const fragment of fragments) {
-      const chain = fragment
-        .replaceAll("->", ">")
-        .split(">")
-        .map((nodeId) => nodeId.trim())
-        .filter(Boolean);
-
-      if (chain.length < 2) {
-        continue;
-      }
-
-      for (let i = 0; i < chain.length - 1; i += 1) {
-        const key = `${chain[i]}->${chain[i + 1]}`;
-        const edgeId = edgeIdByPairKey.get(key);
-        if (edgeId !== undefined) {
-          ids.add(edgeId);
-        }
-      }
-    }
-
-    return [...ids];
   }
 
   function resolveNodeIdsForPath(pathSpec) {
@@ -380,38 +415,362 @@
     });
   }
 
-  function setHighlightedEdges(nextEdgeIds) {
-    if (!edgeDataSet) {
+  function triggerEdgeWave(edgeId, strength) {
+    if (!edgeId) {
+      return;
+    }
+    const state = ensureEdgeWaveState(edgeId);
+    state.amplitude = Math.max(state.amplitude, clampNumber(strength, 0.18, 3.2));
+    state.phase += Math.random() * Math.PI * 0.8;
+    maybePlayEdgeSine(edgeId, strength);
+  }
+
+  function ensureEdgeWaveState(edgeId) {
+    if (!edgeWaveStateById.has(edgeId)) {
+      edgeWaveStateById.set(edgeId, {
+        amplitude: 0,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    return edgeWaveStateById.get(edgeId);
+  }
+
+  function triggerNodeImpulse(nodeId, strength) {
+    if (!nodeId) {
+      return;
+    }
+    const nodeKey = String(nodeId);
+    const impulse = clampNumber(strength, 0.2, 3.4);
+    const nodeState = ensureNodeWaveState(nodeKey);
+    nodeState.amplitude = Math.max(nodeState.amplitude, impulse);
+    nodeState.phase += Math.random() * Math.PI * 1.1;
+    maybePlayNodePluck(nodeKey, impulse);
+
+    const linkedEdges = edgeIdsByNodeId.get(nodeKey) || [];
+    for (const edgeId of linkedEdges) {
+      triggerEdgeWave(edgeId, impulse * 0.95);
+    }
+  }
+
+  function ensureNodeWaveState(nodeId) {
+    if (!nodeWaveStateById.has(nodeId)) {
+      nodeWaveStateById.set(nodeId, {
+        amplitude: 0,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    return nodeWaveStateById.get(nodeId);
+  }
+
+  function startEdgeWaveLoop() {
+    if (edgeWaveFrameId !== null) {
       return;
     }
 
-    const nextIds = new Set(nextEdgeIds);
-    const baseEdgeStyle = {
-      width: 1.25,
-      color: {
-        color: theme.edge,
-        highlight: theme.edgeHighlight
+    const tick = (ts) => {
+      edgeWaveFrameId = null;
+      if (!network) {
+        return;
+      }
+
+      const dt = edgeWaveLastTick ? Math.max(8, Math.min(40, ts - edgeWaveLastTick)) : 16;
+      edgeWaveLastTick = ts;
+      let hasActiveWave = false;
+
+      for (const state of edgeWaveStateById.values()) {
+        if (state.amplitude > 0.001) {
+          state.amplitude *= Math.exp(-dt * EDGE_WAVE_DAMPING);
+          state.phase += dt * EDGE_WAVE_SPEED;
+        }
+        if (state.amplitude > 0.03) {
+          hasActiveWave = true;
+        }
+      }
+
+      for (const state of nodeWaveStateById.values()) {
+        if (state.amplitude > 0.001) {
+          state.amplitude *= Math.exp(-dt * NODE_WAVE_DAMPING);
+          state.phase += dt * NODE_WAVE_SPEED;
+        }
+        if (state.amplitude > 0.03) {
+          hasActiveWave = true;
+        }
+      }
+
+      network.redraw();
+      if (hasActiveWave || mapIsInteracting) {
+        edgeWaveFrameId = window.requestAnimationFrame(tick);
       }
     };
-    const highlightedStyle = {
-      width: 3.2,
-      color: {
-        color: theme.edgeHighlight,
-        highlight: theme.edgeHighlight
+
+    edgeWaveFrameId = window.requestAnimationFrame(tick);
+  }
+
+  function drawStringEdges(ctx) {
+    if (!network || !edgeDataSet || !nodesDataSet) {
+      return;
+    }
+
+    const edges = edgeDataSet.get();
+    if (!edges.length) {
+      return;
+    }
+
+    const ts = performance.now();
+    const allNodeIds = nodesDataSet.getIds();
+    const positions = network.getPositions(allNodeIds);
+    updateNodeMotion(positions, ts);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (const edge of edges) {
+      const edgeId = edge.id;
+      const fromId = String(edge.from);
+      const toId = String(edge.to);
+      const from = positions[fromId];
+      const to = positions[toId];
+      if (!from || !to) {
+        continue;
       }
+
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const rawDistance = Math.hypot(dx, dy);
+      if (!Number.isFinite(rawDistance) || rawDistance < 2) {
+        continue;
+      }
+
+      const unitX = dx / rawDistance;
+      const unitY = dy / rawDistance;
+      const normalX = -unitY;
+      const normalY = unitX;
+      const fromRadius = getNodeRadius(fromId);
+      const toRadius = getNodeRadius(toId);
+
+      const startX = from.x + unitX * fromRadius;
+      const startY = from.y + unitY * fromRadius;
+      const endX = to.x - unitX * toRadius;
+      const endY = to.y - unitY * toRadius;
+      const distance = Math.hypot(endX - startX, endY - startY);
+      if (distance < 2) {
+        continue;
+      }
+
+      const motion = (nodeMotionById.get(fromId) || 0) + (nodeMotionById.get(toId) || 0);
+      const motionBoost = Math.min(7, motion * 140);
+
+      const waveState = ensureEdgeWaveState(edgeId);
+      const waveAmplitude = waveState.amplitude * 7.5 + motionBoost * 0.22;
+      const bowAmplitude = clampNumber(distance * 0.012 + motionBoost * 0.45, 2.2, 13);
+      const strokeColor = getEdgeStrokeColor(edge);
+      const baseWidth = Number(edge.width) || 1.25;
+      const strokeWidth = baseWidth;
+
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.beginPath();
+
+      const segments = Math.max(12, Math.min(26, Math.round(distance / 18)));
+      for (let i = 0; i <= segments; i += 1) {
+        const t = i / segments;
+        const envelope = Math.sin(Math.PI * t);
+        const baseX = lerpNumber(startX, endX, t);
+        const baseY = lerpNumber(startY, endY, t);
+        const wave = Math.sin((t * Math.PI * 2.2) + waveState.phase) * waveAmplitude * envelope;
+        const offset = bowAmplitude * envelope + wave;
+        const x = baseX + normalX * offset;
+        const y = baseY + normalY * offset;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+    }
+
+    drawNodeImpulses(ctx, positions);
+
+    ctx.restore();
+    lastStringDrawAt = ts;
+  }
+
+  function drawNodeImpulses(ctx, positions) {
+    for (const [nodeId, state] of nodeWaveStateById.entries()) {
+      if (!state || state.amplitude <= 0.03) {
+        continue;
+      }
+      const pos = positions[nodeId];
+      if (!pos) {
+        continue;
+      }
+      const baseRadius = getNodeRadius(nodeId);
+      const amp = state.amplitude;
+      const wobble = Math.sin(state.phase) * (0.8 + amp * 0.4);
+
+      const r1 = baseRadius + 2.2 + amp * 2.3 + wobble;
+      const r2 = baseRadius + 6.2 + amp * 3.6 + wobble * 1.1;
+
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = toRgbaColor(theme.accentBlue, clampNumber(0.34 + amp * 0.18, 0.2, 0.72));
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r1, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = toRgbaColor(theme.accentBlue, clampNumber(0.16 + amp * 0.1, 0.08, 0.42));
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function updateNodeMotion(positions, ts) {
+    const dt = lastStringDrawAt ? Math.max(8, Math.min(40, ts - lastStringDrawAt)) : 16;
+    nodeMotionById = new Map();
+
+    for (const [id, pos] of Object.entries(positions)) {
+      const prev = prevNodePositionById.get(id);
+      if (prev) {
+        const vx = (pos.x - prev.x) / dt;
+        const vy = (pos.y - prev.y) / dt;
+        nodeMotionById.set(id, Math.hypot(vx, vy));
+      } else {
+        nodeMotionById.set(id, 0);
+      }
+      prevNodePositionById.set(id, { x: pos.x, y: pos.y });
+    }
+  }
+
+  function getNodeRadius(nodeId) {
+    const node = nodesDataSet ? nodesDataSet.get(nodeId) : null;
+    const size = Number(node && node.size);
+    if (Number.isFinite(size) && size > 0) {
+      return size;
+    }
+    return 10;
+  }
+
+  function maybePlayNodePluck(nodeId, impulseStrength) {
+    if (!nodesDataSet) {
+      return;
+    }
+    const node = nodesDataSet.get(nodeId);
+    if (!node) {
+      return;
+    }
+    const size = Number(node.size);
+    if (!Number.isFinite(size)) {
+      return;
+    }
+
+    const boostedSize = size + clampNumber(impulseStrength * 1.2, 0, 4);
+    playPluck(boostedSize, nodeSizeRange);
+  }
+
+  function maybePlayEdgeSine(edgeId, impulseStrength) {
+    if (!edgeDataSet || !network) {
+      return;
+    }
+
+    const now = performance.now();
+    const lastAt = edgeLastSoundAtById.get(edgeId) || 0;
+    const cooldownMs = 82;
+    if (now - lastAt < cooldownMs) {
+      return;
+    }
+    edgeLastSoundAtById.set(edgeId, now);
+
+    const edge = edgeDataSet.get(edgeId);
+    if (!edge) {
+      return;
+    }
+    const fromId = String(edge.from);
+    const toId = String(edge.to);
+    const positions = network.getPositions([fromId, toId]);
+    const from = positions[fromId];
+    const to = positions[toId];
+    if (!from || !to) {
+      return;
+    }
+
+    const lengthPx = Math.hypot(to.x - from.x, to.y - from.y);
+    const freqHz = edgeLengthToHz(lengthPx, impulseStrength);
+    playSineTone(freqHz);
+  }
+
+  function edgeLengthToHz(lengthPx, impulseStrength) {
+    const normalized = clampNumber((lengthPx - 60) / 520, 0, 1);
+    const baseHz = lerpNumber(860, 190, normalized);
+    const impulseBend = 1 + clampNumber((impulseStrength - 1) * 0.045, -0.1, 0.14);
+    return baseHz * impulseBend;
+  }
+
+  function getNodeSizeRange() {
+    const values = [...nodeBaseSizeById.values()].filter((value) => Number.isFinite(value));
+    if (!values.length) {
+      return { min: 10, max: 24 };
+    }
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values)
     };
+  }
 
-    const idsToReset = [...highlightedEdgeIds].filter((id) => !nextIds.has(id));
-    const idsToHighlight = [...nextIds].filter((id) => !highlightedEdgeIds.has(id));
+  function getEdgeStrokeColor(edge) {
+    return theme.edge;
+  }
 
-    if (idsToReset.length) {
-      edgeDataSet.update(idsToReset.map((id) => ({ id, ...baseEdgeStyle })));
+  function initMapImpulseTracking() {
+    if (!mapContainer) {
+      return;
     }
-    if (idsToHighlight.length) {
-      edgeDataSet.update(idsToHighlight.map((id) => ({ id, ...highlightedStyle })));
-    }
 
-    highlightedEdgeIds = nextIds;
+    mapContainer.addEventListener("pointerdown", (event) => {
+      lastPointerX = event.clientX;
+      lastPointerY = event.clientY;
+      lastPointerAt = performance.now();
+      pointerSpeedPxMs = 0;
+    }, { passive: true });
+
+    mapContainer.addEventListener("pointermove", (event) => {
+      const now = performance.now();
+      if (!lastPointerAt) {
+        lastPointerAt = now;
+        lastPointerX = event.clientX;
+        lastPointerY = event.clientY;
+        return;
+      }
+
+      const dt = Math.max(8, now - lastPointerAt);
+      const dx = event.clientX - lastPointerX;
+      const dy = event.clientY - lastPointerY;
+      const instant = Math.hypot(dx, dy) / dt;
+      pointerSpeedPxMs = pointerSpeedPxMs * 0.62 + instant * 0.38;
+
+      lastPointerAt = now;
+      lastPointerX = event.clientX;
+      lastPointerY = event.clientY;
+    }, { passive: true });
+
+    mapContainer.addEventListener("pointerleave", () => {
+      pointerSpeedPxMs *= 0.35;
+    }, { passive: true });
+  }
+
+  function getPointerImpulseStrength() {
+    // Convert pointer speed (px/ms) to impulse amplitude.
+    return clampNumber(0.28 + pointerSpeedPxMs * 5.4, 0.25, 3.4);
+  }
+
+  function lerpNumber(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function clampNumber(value, min, max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   function getNodeImportanceLevel(node) {
@@ -680,11 +1039,7 @@
   }
 
   function getPageBaseUrl() {
-    const scriptEl = document.currentScript;
-    if (scriptEl && scriptEl.src) {
-      return new URL(".", scriptEl.src);
-    }
-    return new URL(".", window.location.href);
+    return new URL(".", import.meta.url);
   }
 
   function resolvePagePath(relativePath) {

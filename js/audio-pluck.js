@@ -12,7 +12,7 @@ const PLUCK_SETTINGS = {
   samples: 4096,
   attackSamples: 24,
   minReleaseSamples: 420,
-  outputGainScale: 0.1,
+  outputGainScale: 0.5,
   brownStep: 0.06,
   brownLeak: 0.985,
   combDelaySec: 0.0035,

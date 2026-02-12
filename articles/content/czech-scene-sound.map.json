@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Postoj ke zvukovemu v ramci hudebni sceny CR",
+    "title": "Postoj ke zvukovému v rámci hudební sceny ČR",
     "subtitle": "",
     "author": "Ing. Petr Němec",
     "updated": "2026-02-12"
@@ -17,17 +17,11 @@
   ],
   "edges": [
     { "from": "zvuk", "to": "hudba" },
-    { "from": "zvuk", "to": "field" },
-    { "from": "zvuk", "to": "prostor" },
     { "from": "zvuk", "to": "akce" },
     { "from": "zvuk", "to": "listening" },
     { "from": "listening", "to": "akce" },
     { "from": "listening", "to": "budoucnost" },
     { "from": "akce", "to": "zkusenosti" },
-    { "from": "akce", "to": "budoucnost" },
-    { "from": "hudba", "to": "zkusenosti" },
-    { "from": "hudba", "to": "budoucnost" },
-    { "from": "field", "to": "zkusenosti" },
-    { "from": "field", "to": "prostor" }
+    { "from": "akce", "to": "budoucnost" }
   ]
 }
