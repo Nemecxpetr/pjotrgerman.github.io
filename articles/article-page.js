@@ -8,6 +8,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const NODE_WAVE_DAMPING = 0.009;
   const EDGE_WAVE_SPEED = 0.018;
   const NODE_WAVE_SPEED = 0.02;
+  const CONTEXT_ALIGN_EPSILON_PX = 0.6;
+  const CONTEXT_ALIGN_MAX_PASSES = 4;
+  const PARAGRAPH_ENTITY_SELECTOR = "p, ul, ol, blockquote";
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
 
@@ -35,6 +38,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let nodeWaveStateById = new Map();
   let highlightedEdgeIds = new Set();
   let highlightedNodeIds = new Set();
+  let mentionMetaByEl = new WeakMap();
+  let threadMentionsById = new Map();
   let selectedSectionId = null;
   let mapIsInteracting = false;
   let mapZoomIdleTimer = null;
@@ -55,6 +60,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let pulsingNodeId = null;
   let pulseFrameId = null;
   let pulsePhase = 0;
+  let activeContextShiftBlock = null;
+  let contextShiftDragState = null;
+  let contextShiftHandlersInstalled = false;
+  let contextAnchorSpacerTopPx = 0;
+  let contextAnchorSpacerBottomPx = 0;
+  let lastArticlePaneScrollTop = 0;
+  let suppressContextAnchorScrollReset = false;
   const theme = readThemeValues();
 
   init().catch((error) => {
@@ -69,6 +81,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
     renderMeta(mapConfig.meta || {});
     articleContent.innerHTML = articleHtml;
+    hydrateThreadPlaceholders();
 
     sectionEls = [...articleContent.querySelectorAll("section[id]")];
     sectionEls.forEach((section) => {
@@ -77,9 +90,43 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
     initMobileMapScrollLock();
     initPaneResizer();
+    initContextShiftSystem();
     installMap(mapConfig);
     installTextPathHover();
+    installThreadLinks();
     restoreHash();
+  }
+
+  function hydrateThreadPlaceholders() {
+    const sourceByThreadId = new Map();
+    const sources = [...articleContent.querySelectorAll("[data-thread-source]")];
+    for (const source of sources) {
+      const threadId = String(source.dataset.threadSource || "").trim();
+      if (!threadId || sourceByThreadId.has(threadId)) {
+        continue;
+      }
+      sourceByThreadId.set(threadId, source.innerHTML);
+      if (!source.dataset.thread) {
+        source.dataset.thread = threadId;
+      }
+    }
+
+    const placeholders = [...articleContent.querySelectorAll("[data-thread-placeholder]")];
+    for (const placeholder of placeholders) {
+      const threadId = String(placeholder.dataset.threadPlaceholder || "").trim();
+      if (!threadId) {
+        continue;
+      }
+      const markup = sourceByThreadId.get(threadId);
+      if (typeof markup !== "string") {
+        continue;
+      }
+
+      placeholder.innerHTML = markup;
+      if (!placeholder.dataset.thread) {
+        placeholder.dataset.thread = threadId;
+      }
+    }
   }
 
   function renderMeta(meta) {
@@ -258,16 +305,27 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     });
   }
 
-  function scrollToSection(sectionId) {
+  function scrollToSection(sectionId, options = {}) {
+    const {
+      resetScroll = true,
+      scrollBehavior = "smooth",
+      shouldFocusNode = false,
+      updateHash = true
+    } = options;
+
     const target = articleContent.querySelector(`#${cssEscape(sectionId)}`);
     if (!target) {
       return;
     }
 
     selectSection(sectionId, true);
-    syncSelectedNode(sectionId, false);
-    articlePane.scrollTo({ top: 0, behavior: "smooth" });
-    window.history.replaceState(null, "", `#${sectionId}`);
+    syncSelectedNode(sectionId, shouldFocusNode);
+    if (resetScroll) {
+      articlePane.scrollTo({ top: 0, behavior: scrollBehavior });
+    }
+    if (updateHash) {
+      window.history.replaceState(null, "", `#${sectionId}`);
+    }
   }
 
   function selectSection(sectionId, force) {
@@ -283,6 +341,305 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       section.classList.toggle("is-hidden", !isActive);
       section.hidden = !isActive;
     }
+    resetContextShiftBlocks();
+  }
+
+  function initContextShiftSystem() {
+    if (contextShiftHandlersInstalled || !articlePane) {
+      return;
+    }
+    contextShiftHandlersInstalled = true;
+    lastArticlePaneScrollTop = articlePane.scrollTop;
+
+    articlePane.addEventListener("pointerdown", onContextShiftPointerDown);
+    articlePane.addEventListener("scroll", onContextShiftPaneScroll, { passive: true });
+    window.addEventListener("pointermove", onContextShiftPointerMove, { passive: false });
+    window.addEventListener("pointerup", onContextShiftPointerUp, { passive: true });
+    window.addEventListener("pointercancel", onContextShiftPointerUp, { passive: true });
+  }
+
+  function onContextShiftPaneScroll() {
+    const currentScrollTop = articlePane ? articlePane.scrollTop : 0;
+    const deltaY = currentScrollTop - lastArticlePaneScrollTop;
+    lastArticlePaneScrollTop = currentScrollTop;
+
+    if (suppressContextAnchorScrollReset) {
+      return;
+    }
+    if (Math.abs(deltaY) < 0.15) {
+      return;
+    }
+    if (contextAnchorSpacerTopPx > 0.5 || contextAnchorSpacerBottomPx > 0.5) {
+      consumeContextAnchorSpacer(deltaY);
+    }
+  }
+
+  function consumeContextAnchorSpacer(deltaY) {
+    const magnitude = Math.max(0.3, Math.abs(deltaY));
+    let nextTop = contextAnchorSpacerTopPx;
+    let nextBottom = contextAnchorSpacerBottomPx;
+
+    if (nextTop > 0.5 && nextBottom <= 0.5) {
+      const factor = deltaY > 0 ? 0.55 : 0.28;
+      nextTop = Math.max(0, nextTop - magnitude * factor);
+    } else if (nextBottom > 0.5 && nextTop <= 0.5) {
+      const factor = deltaY < 0 ? 0.55 : 0.28;
+      nextBottom = Math.max(0, nextBottom - magnitude * factor);
+    } else {
+      const decay = magnitude * 0.42;
+      nextTop = Math.max(0, nextTop - decay);
+      nextBottom = Math.max(0, nextBottom - decay);
+    }
+
+    if (nextTop <= 0.5 && nextBottom <= 0.5) {
+      clearContextAnchorSpacer();
+      return;
+    }
+    setContextAnchorSpacers(nextTop, nextBottom);
+  }
+
+  function onContextShiftPointerDown(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    if (target.closest(".graph-thread, a, button, input, textarea, select")) {
+      return;
+    }
+
+    const block = target.closest(".context-shift-active");
+    if (!(block instanceof HTMLElement)) {
+      return;
+    }
+    const section = block.closest("section[id]");
+    if (!(section instanceof HTMLElement) || section.id !== selectedSectionId) {
+      return;
+    }
+
+    const shift = getCurrentContextShift(block);
+    contextShiftDragState = {
+      pointerId: event.pointerId,
+      block,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startShiftX: shift.x,
+      startShiftY: shift.y
+    };
+
+    block.classList.add("is-dragging");
+    if (block.setPointerCapture) {
+      block.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+  }
+
+  function onContextShiftPointerMove(event) {
+    if (!contextShiftDragState || event.pointerId !== contextShiftDragState.pointerId) {
+      return;
+    }
+
+    const limits = getContextShiftLimits();
+    const dx = event.clientX - contextShiftDragState.startClientX;
+    const dy = event.clientY - contextShiftDragState.startClientY;
+    const nextX = clampNumber(contextShiftDragState.startShiftX + dx, -limits.x, limits.x);
+    const nextY = clampNumber(contextShiftDragState.startShiftY + dy, -limits.y, limits.y);
+    applyContextShift(contextShiftDragState.block, nextX, nextY);
+    event.preventDefault();
+  }
+
+  function onContextShiftPointerUp(event) {
+    if (!contextShiftDragState || event.pointerId !== contextShiftDragState.pointerId) {
+      return;
+    }
+
+    const { block } = contextShiftDragState;
+    block.classList.remove("is-dragging");
+    if (block.releasePointerCapture && block.hasPointerCapture(event.pointerId)) {
+      block.releasePointerCapture(event.pointerId);
+    }
+    contextShiftDragState = null;
+  }
+
+  function getContextShiftLimits() {
+    if (window.innerWidth < 680) {
+      return { x: 46, y: 24 };
+    }
+    if (window.innerWidth < 960) {
+      return { x: 140, y: 64 };
+    }
+    return { x: 260, y: 120 };
+  }
+
+  function applyContextShift(block, shiftX, shiftY) {
+    if (!(block instanceof HTMLElement)) {
+      return;
+    }
+    const x = Math.abs(shiftX) < 0.35 ? 0 : shiftX;
+    const y = Math.abs(shiftY) < 0.35 ? 0 : shiftY;
+    block.style.transform = `translate3d(${x.toFixed(3)}px, ${y.toFixed(3)}px, 0)`;
+    block.dataset.contextShiftX = String(x);
+    block.dataset.contextShiftY = String(y);
+    block.classList.add("context-shifted");
+  }
+
+  function getCurrentContextShift(block) {
+    const x = Number.parseFloat(block.dataset.contextShiftX || "0");
+    const y = Number.parseFloat(block.dataset.contextShiftY || "0");
+    return {
+      x: Number.isFinite(x) ? x : 0,
+      y: Number.isFinite(y) ? y : 0
+    };
+  }
+
+  function setActiveContextShiftBlock(block) {
+    if (activeContextShiftBlock && activeContextShiftBlock !== block) {
+      activeContextShiftBlock.classList.remove("context-shift-active");
+    }
+    activeContextShiftBlock = block || null;
+    if (activeContextShiftBlock) {
+      activeContextShiftBlock.classList.add("context-shift-active");
+    }
+  }
+
+  function resetContextShiftBlocks() {
+    const shiftedBlocks = articleContent.querySelectorAll(".context-shifted, .context-shift-active");
+    for (const block of shiftedBlocks) {
+      if (!(block instanceof HTMLElement)) {
+        continue;
+      }
+      block.classList.remove("context-shifted", "context-shift-active", "is-dragging");
+      block.style.transform = "";
+      delete block.dataset.contextShiftX;
+      delete block.dataset.contextShiftY;
+    }
+    activeContextShiftBlock = null;
+    contextShiftDragState = null;
+    clearContextAnchorSpacer();
+  }
+
+  function alignMarkerContextBlock(marker, desiredRowPx, desiredColumnPx) {
+    if (!(marker instanceof Element)) {
+      return false;
+    }
+    const block = marker.closest(PARAGRAPH_ENTITY_SELECTOR);
+    if (!(block instanceof HTMLElement)) {
+      return false;
+    }
+    const section = block.closest("section[id]");
+    if (!(section instanceof HTMLElement) || section.id !== selectedSectionId) {
+      return false;
+    }
+
+    setActiveContextShiftBlock(block);
+
+    const limits = getContextShiftLimits();
+    clearContextAnchorSpacer();
+
+    const initial = getMarkerPointInArticlePane(marker);
+    if (!initial) {
+      return false;
+    }
+    const desiredShiftX = Number.isFinite(desiredColumnPx)
+      ? clampNumber(desiredColumnPx - initial.x, -limits.x, limits.x)
+      : 0;
+    // Keep vertical alignment in flow (scroll + spacer) to avoid paragraph overlap.
+    applyContextShift(block, desiredShiftX, 0);
+
+    // Use scroll as primary y-align correction.
+    let markerPoint = getMarkerPointInArticlePane(marker);
+    if (markerPoint && Number.isFinite(desiredRowPx)) {
+      applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+    }
+
+    // If scroll clamping blocks y-alignment, inject temporary spacer on the constrained side.
+    markerPoint = getMarkerPointInArticlePane(marker);
+    if (markerPoint && Number.isFinite(desiredRowPx)) {
+      const residualY = desiredRowPx - markerPoint.y;
+      if (residualY > 0.5) {
+        // Marker is still too high: extend top so content can move downward.
+        setContextAnchorSpacers(residualY, 0);
+      } else if (residualY < -0.5) {
+        // Marker is still too low at bottom clamp: extend bottom and retry scroll.
+        setContextAnchorSpacers(0, Math.abs(residualY));
+        markerPoint = getMarkerPointInArticlePane(marker);
+        if (markerPoint) {
+          applyPaneScrollDelta(markerPoint.y - desiredRowPx);
+        }
+      } else {
+        clearContextAnchorSpacer();
+      }
+    }
+
+    // Final x/y micro-correction through block shift.
+    markerPoint = getMarkerPointInArticlePane(marker);
+    if (!markerPoint) {
+      return false;
+    }
+    const currentShift = getCurrentContextShift(block);
+    const correctionX = Number.isFinite(desiredColumnPx) ? (desiredColumnPx - markerPoint.x) : 0;
+    applyContextShift(
+      block,
+      clampNumber(currentShift.x + correctionX, -limits.x, limits.x),
+      0
+    );
+
+    const finalPoint = getMarkerPointInArticlePane(marker);
+    if (!finalPoint) {
+      return false;
+    }
+    const dx = Number.isFinite(desiredColumnPx) ? (desiredColumnPx - finalPoint.x) : 0;
+    const dy = Number.isFinite(desiredRowPx) ? (desiredRowPx - finalPoint.y) : 0;
+    return Math.abs(dx) <= CONTEXT_ALIGN_EPSILON_PX && Math.abs(dy) <= CONTEXT_ALIGN_EPSILON_PX;
+  }
+
+  function getMarkerPointInArticlePane(marker) {
+    if (!marker || !articlePane) {
+      return null;
+    }
+    const paneRect = articlePane.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    return {
+      x: markerRect.left - paneRect.left,
+      y: markerRect.top - paneRect.top
+    };
+  }
+
+  function applyPaneScrollDelta(deltaY) {
+    if (!articlePane || !Number.isFinite(deltaY) || Math.abs(deltaY) < 0.2) {
+      return;
+    }
+    const maxScrollTop = Math.max(0, articlePane.scrollHeight - articlePane.clientHeight);
+    const targetScrollTop = clampNumber(articlePane.scrollTop + deltaY, 0, maxScrollTop);
+    suppressContextAnchorScrollReset = true;
+    articlePane.scrollTop = targetScrollTop;
+    window.requestAnimationFrame(() => {
+      suppressContextAnchorScrollReset = false;
+    });
+  }
+
+  function setContextAnchorSpacers(topPx, bottomPx) {
+    const nextTop = Math.max(0, Number.isFinite(topPx) ? topPx : 0);
+    const nextBottom = Math.max(0, Number.isFinite(bottomPx) ? bottomPx : 0);
+    contextAnchorSpacerTopPx = nextTop;
+    contextAnchorSpacerBottomPx = nextBottom;
+    if (!articleContent) {
+      return;
+    }
+    articleContent.style.setProperty("--context-anchor-spacer-top", `${nextTop.toFixed(3)}px`);
+    articleContent.style.setProperty("--context-anchor-spacer-bottom", `${nextBottom.toFixed(3)}px`);
+  }
+
+  function clearContextAnchorSpacer() {
+    contextAnchorSpacerTopPx = 0;
+    contextAnchorSpacerBottomPx = 0;
+    if (!articleContent) {
+      return;
+    }
+    articleContent.style.setProperty("--context-anchor-spacer-top", "0px");
+    articleContent.style.setProperty("--context-anchor-spacer-bottom", "0px");
   }
 
   function syncSelectedNode(sectionId, shouldFocus) {
@@ -358,12 +715,42 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function installTextPathHover() {
-    const markers = [...articleContent.querySelectorAll("[data-graph-path]")];
+    mentionMetaByEl = new WeakMap();
+    const markerSet = new Set([
+      ...articleContent.querySelectorAll("[data-graph-path]"),
+      ...articleContent.querySelectorAll("[data-thread]"),
+      ...articleContent.querySelectorAll("[data-thread-source]"),
+      ...articleContent.querySelectorAll("[data-thread-placeholder]")
+    ]);
+    const markers = [...markerSet];
+    const threadAutoMetaById = buildThreadAutoMetaById(markers);
+
     markers.forEach((marker) => {
       marker.classList.add("graph-mention");
       const pathSpec = marker.dataset.graphPath || "";
-      const edgeIds = resolveEdgeIdsForMarker(pathSpec);
-      const nodeIds = resolveNodeIdsForPath(pathSpec);
+      const threadId = getMarkerThreadId(marker);
+      const section = marker.closest("section[id]");
+      const sectionId = section ? section.id : "";
+
+      let edgeIds = [];
+      let nodeIds = [];
+
+      if (pathSpec.trim()) {
+        edgeIds = resolveEdgeIdsForMarker(pathSpec);
+        nodeIds = resolveNodeIdsForPath(pathSpec);
+      } else if (threadId && threadAutoMetaById.has(threadId)) {
+        const autoMeta = threadAutoMetaById.get(threadId);
+        edgeIds = [...autoMeta.edgeIds];
+        nodeIds = [...autoMeta.nodeIds];
+      } else if (sectionId) {
+        nodeIds = getSectionNodeIds(sectionId);
+      }
+
+      mentionMetaByEl.set(marker, {
+        edgeIds,
+        nodeIds,
+        pathSpec
+      });
       if (!nodeIds.length && !edgeIds.length) {
         return;
       }
@@ -383,6 +770,343 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       marker.addEventListener("focus", onEnter);
       marker.addEventListener("blur", onLeave);
     });
+  }
+
+  function getMarkerThreadId(marker) {
+    if (!marker || !marker.dataset) {
+      return "";
+    }
+    return String(
+      marker.dataset.thread
+      || marker.dataset.threadSource
+      || marker.dataset.threadPlaceholder
+      || ""
+    ).trim();
+  }
+
+  function buildThreadAutoMetaById(markers) {
+    const threadMarkersById = new Map();
+    for (const marker of markers) {
+      const threadId = getMarkerThreadId(marker);
+      if (!threadId) {
+        continue;
+      }
+      if (!threadMarkersById.has(threadId)) {
+        threadMarkersById.set(threadId, []);
+      }
+      threadMarkersById.get(threadId).push(marker);
+    }
+
+    if (!threadMarkersById.size) {
+      return new Map();
+    }
+
+    const adjacency = buildNodeAdjacency();
+    const result = new Map();
+
+    for (const [threadId, threadMarkers] of threadMarkersById.entries()) {
+      const sectionNodeIds = [];
+      for (const marker of threadMarkers) {
+        const section = marker.closest("section[id]");
+        const sectionId = section ? section.id : "";
+        const nodeIds = getSectionNodeIds(sectionId);
+        if (nodeIds.length) {
+          sectionNodeIds.push(String(nodeIds[0]));
+        }
+      }
+
+      const orderedUniqueNodeIds = [];
+      for (const nodeId of sectionNodeIds) {
+        if (orderedUniqueNodeIds[orderedUniqueNodeIds.length - 1] !== nodeId) {
+          orderedUniqueNodeIds.push(nodeId);
+        }
+      }
+
+      const nodeIds = new Set(orderedUniqueNodeIds);
+      const edgeIds = new Set();
+
+      for (let i = 0; i < orderedUniqueNodeIds.length - 1; i += 1) {
+        const fromId = orderedUniqueNodeIds[i];
+        const toId = orderedUniqueNodeIds[i + 1];
+        const chain = findNodePathBfs(fromId, toId, adjacency);
+        if (chain.length < 2) {
+          continue;
+        }
+
+        for (const nodeId of chain) {
+          nodeIds.add(nodeId);
+        }
+        for (let j = 0; j < chain.length - 1; j += 1) {
+          const edgeId = edgeIdByPairKey.get(`${chain[j]}->${chain[j + 1]}`);
+          if (edgeId !== undefined) {
+            edgeIds.add(edgeId);
+          }
+        }
+      }
+
+      result.set(threadId, {
+        nodeIds: [...nodeIds],
+        edgeIds: [...edgeIds]
+      });
+    }
+
+    return result;
+  }
+
+  function buildNodeAdjacency() {
+    const adjacency = new Map();
+    const edges = edgeDataSet ? edgeDataSet.get() : [];
+    for (const edge of edges) {
+      const fromId = String(edge.from);
+      const toId = String(edge.to);
+      if (!adjacency.has(fromId)) {
+        adjacency.set(fromId, new Set());
+      }
+      if (!adjacency.has(toId)) {
+        adjacency.set(toId, new Set());
+      }
+      adjacency.get(fromId).add(toId);
+      adjacency.get(toId).add(fromId);
+    }
+    return adjacency;
+  }
+
+  function findNodePathBfs(fromNodeId, toNodeId, adjacency) {
+    const fromId = String(fromNodeId || "");
+    const toId = String(toNodeId || "");
+    if (!fromId || !toId) {
+      return [];
+    }
+    if (fromId === toId) {
+      return [fromId];
+    }
+    if (!adjacency.has(fromId) || !adjacency.has(toId)) {
+      return [fromId, toId];
+    }
+
+    const queue = [fromId];
+    const prevById = new Map();
+    const visited = new Set([fromId]);
+    let found = false;
+
+    while (queue.length) {
+      const current = queue.shift();
+      const neighbors = adjacency.get(current) || [];
+      for (const neighbor of neighbors) {
+        if (visited.has(neighbor)) {
+          continue;
+        }
+        visited.add(neighbor);
+        prevById.set(neighbor, current);
+        if (neighbor === toId) {
+          found = true;
+          queue.length = 0;
+          break;
+        }
+        queue.push(neighbor);
+      }
+    }
+
+    if (!found) {
+      return [fromId, toId];
+    }
+
+    const chain = [toId];
+    let cursor = toId;
+    while (cursor !== fromId) {
+      cursor = prevById.get(cursor);
+      if (!cursor) {
+        return [fromId, toId];
+      }
+      chain.push(cursor);
+    }
+    chain.reverse();
+    return chain;
+  }
+
+  function installThreadLinks() {
+    threadMentionsById = new Map();
+    const threadMarkers = [...articleContent.querySelectorAll("[data-thread]")];
+    for (const marker of threadMarkers) {
+      const rawThreadId = marker.dataset.thread || "";
+      const threadId = rawThreadId.trim();
+      if (!threadId) {
+        continue;
+      }
+
+      const section = marker.closest("section[id]");
+      const sectionId = section ? section.id : "";
+      if (!sectionId) {
+        continue;
+      }
+
+      const pathMeta = mentionMetaByEl.get(marker) || {
+        edgeIds: resolveEdgeIdsForMarker(marker.dataset.graphPath || ""),
+        nodeIds: resolveNodeIdsForPath(marker.dataset.graphPath || "")
+      };
+
+      const nodeIds = pathMeta.nodeIds && pathMeta.nodeIds.length
+        ? pathMeta.nodeIds
+        : getSectionNodeIds(sectionId);
+      const edgeIds = pathMeta.edgeIds || [];
+
+      const instance = {
+        marker,
+        threadId,
+        sectionId,
+        nodeIds,
+        edgeIds
+      };
+
+      if (!threadMentionsById.has(threadId)) {
+        threadMentionsById.set(threadId, []);
+      }
+      threadMentionsById.get(threadId).push(instance);
+
+      marker.classList.add("graph-thread");
+      if (!isNaturallyFocusable(marker) && !marker.hasAttribute("tabindex")) {
+        marker.setAttribute("tabindex", "0");
+      }
+
+      marker.addEventListener("click", (event) => {
+        event.preventDefault();
+        cycleThreadContext(threadId, marker);
+      });
+
+      marker.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        cycleThreadContext(threadId, marker);
+      });
+    }
+  }
+
+  function isNaturallyFocusable(el) {
+    if (!el || typeof el.tagName !== "string") {
+      return false;
+    }
+    const tag = el.tagName.toLowerCase();
+    if (tag === "a" && el.hasAttribute("href")) {
+      return true;
+    }
+    return tag === "button" || tag === "input" || tag === "select" || tag === "textarea";
+  }
+
+  function cycleThreadContext(threadId, currentMarker) {
+    const mentions = threadMentionsById.get(threadId) || [];
+    if (mentions.length < 2) {
+      return;
+    }
+
+    const currentIndex = mentions.findIndex((item) => item.marker === currentMarker);
+    if (currentIndex < 0) {
+      return;
+    }
+
+    const nextIndex = findNextThreadIndex(mentions, currentIndex);
+    if (nextIndex < 0 || nextIndex === currentIndex) {
+      return;
+    }
+
+    const desiredRowPx = getMarkerRowInArticlePane(currentMarker);
+    const desiredColumnPx = getMarkerColumnInArticlePane(currentMarker);
+    jumpToThreadMention(mentions[nextIndex], desiredRowPx, desiredColumnPx);
+  }
+
+  function findNextThreadIndex(mentions, currentIndex) {
+    if (!mentions.length) {
+      return -1;
+    }
+
+    const currentSectionId = mentions[currentIndex] ? mentions[currentIndex].sectionId : "";
+    for (let offset = 1; offset < mentions.length; offset += 1) {
+      const index = (currentIndex + offset) % mentions.length;
+      if (mentions[index].sectionId !== currentSectionId) {
+        return index;
+      }
+    }
+
+    return (currentIndex + 1) % mentions.length;
+  }
+
+  function jumpToThreadMention(target, desiredRowPx, desiredColumnPx) {
+    if (!target || !target.sectionId) {
+      return;
+    }
+
+    scrollToSection(target.sectionId, {
+      resetScroll: true,
+      scrollBehavior: "auto",
+      shouldFocusNode: false,
+      updateHash: true
+    });
+
+    window.requestAnimationFrame(() => {
+      centerGraphForMention(target);
+      activateThreadMention(target);
+      const settle = (pass) => {
+        const done = alignMarkerContextBlock(target.marker, desiredRowPx, desiredColumnPx);
+        if (done || pass >= CONTEXT_ALIGN_MAX_PASSES) {
+          return;
+        }
+        window.requestAnimationFrame(() => settle(pass + 1));
+      };
+      settle(0);
+    });
+  }
+
+  function getMarkerRowInArticlePane(marker) {
+    if (!marker || !articlePane) {
+      return Number.NaN;
+    }
+    const paneRect = articlePane.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    return markerRect.top - paneRect.top;
+  }
+
+  function getMarkerColumnInArticlePane(marker) {
+    if (!marker || !articlePane) {
+      return Number.NaN;
+    }
+    const paneRect = articlePane.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    return markerRect.left - paneRect.left;
+  }
+
+  function centerGraphForMention(mention) {
+    if (!mention) {
+      return;
+    }
+    const nodeIds = Array.isArray(mention.nodeIds) && mention.nodeIds.length
+      ? mention.nodeIds
+      : getSectionNodeIds(mention.sectionId);
+    const edgeIds = Array.isArray(mention.edgeIds) ? mention.edgeIds : [];
+
+    setHighlightedPath(edgeIds, nodeIds);
+    centerGraphOnNodes(nodeIds);
+    startEdgeWaveLoop();
+  }
+
+  function activateThreadMention(mention) {
+    if (!mention || !mention.marker) {
+      return;
+    }
+    const threadId = mention.threadId;
+    const mentions = threadMentionsById.get(threadId) || [];
+    for (const item of mentions) {
+      item.marker.classList.remove("is-thread-active");
+    }
+    mention.marker.classList.add("is-thread-active");
+  }
+
+  function getSectionNodeIds(sectionId) {
+    const nodeId = nodeBySectionId.get(sectionId);
+    if (!nodeId) {
+      return [];
+    }
+    return [nodeId];
   }
 
   function resolveEdgeIdsForMarker(pathSpec) {
