@@ -1124,6 +1124,40 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       marker.addEventListener("mouseleave", onLeave);
       marker.addEventListener("focus", onEnter);
       marker.addEventListener("blur", onLeave);
+
+      const hasDirectedPath = Boolean(pathSpec.trim());
+      if (hasDirectedPath && !threadId) {
+        marker.classList.add("graph-path-nav");
+        if (!isNaturallyFocusable(marker) && !marker.hasAttribute("tabindex")) {
+          marker.setAttribute("tabindex", "0");
+        }
+
+        const navigateByPath = () => {
+          const targetSectionId = resolveDirectedPathTargetSection(pathSpec, sectionId);
+          if (!targetSectionId || targetSectionId === sectionId) {
+            return;
+          }
+          scrollToSection(targetSectionId, {
+            resetScroll: true,
+            scrollBehavior: "auto",
+            shouldFocusNode: true,
+            updateHash: true
+          });
+        };
+
+        marker.addEventListener("click", (event) => {
+          event.preventDefault();
+          navigateByPath();
+        });
+
+        marker.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
+          event.preventDefault();
+          navigateByPath();
+        });
+      }
     });
   }
 
@@ -1556,18 +1590,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
 
     const ids = new Set();
-    const fragments = pathSpec
-      .split(/[;,]+/)
-      .map((fragment) => fragment.trim())
-      .filter(Boolean);
-
-    for (const fragment of fragments) {
-      const chain = fragment
-        .replaceAll("->", ">")
-        .split(">")
-        .map((nodeId) => nodeId.trim())
-        .filter(Boolean);
-
+    const chains = parseGraphPathChains(pathSpec);
+    for (const chain of chains) {
       if (chain.length < 2) {
         continue;
       }
@@ -1590,24 +1614,69 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
 
     const ids = new Set();
-    const fragments = pathSpec
-      .split(/[;,]+/)
-      .map((fragment) => fragment.trim())
-      .filter(Boolean);
-
-    for (const fragment of fragments) {
-      const chain = fragment
-        .replaceAll("->", ">")
-        .split(">")
-        .map((nodeId) => nodeId.trim())
-        .filter(Boolean);
-
+    const chains = parseGraphPathChains(pathSpec);
+    for (const chain of chains) {
       for (const nodeId of chain) {
         ids.add(nodeId);
       }
     }
 
     return [...ids];
+  }
+
+  function resolveDirectedPathTargetSection(pathSpec, currentSectionId) {
+    const chains = parseGraphPathChains(pathSpec);
+    if (!chains.length) {
+      return "";
+    }
+
+    const currentNodeId = getSectionNodeIds(currentSectionId)[0] || "";
+    if (currentNodeId) {
+      for (const chain of chains) {
+        for (let i = 0; i < chain.length - 1; i += 1) {
+          if (chain[i] !== currentNodeId) {
+            continue;
+          }
+          const targetSectionId = getSectionIdForNode(chain[i + 1]);
+          if (targetSectionId) {
+            return targetSectionId;
+          }
+        }
+      }
+    }
+
+    for (const chain of chains) {
+      for (let i = 1; i < chain.length; i += 1) {
+        const targetSectionId = getSectionIdForNode(chain[i]);
+        if (targetSectionId && targetSectionId !== currentSectionId) {
+          return targetSectionId;
+        }
+      }
+    }
+
+    for (const chain of chains) {
+      for (const nodeId of chain) {
+        const targetSectionId = getSectionIdForNode(nodeId);
+        if (targetSectionId && targetSectionId !== currentSectionId) {
+          return targetSectionId;
+        }
+      }
+    }
+
+    return "";
+  }
+
+  function parseGraphPathChains(pathSpec) {
+    return String(pathSpec || "")
+      .split(/[;,]+/)
+      .map((fragment) => fragment.trim())
+      .filter(Boolean)
+      .map((fragment) => fragment
+        .replaceAll("->", ">")
+        .split(">")
+        .map((nodeId) => nodeId.trim())
+        .filter(Boolean))
+      .filter((chain) => chain.length > 0);
   }
 
   function centerGraphOnNodes(nodeIds) {

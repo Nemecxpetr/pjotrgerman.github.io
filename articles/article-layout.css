@@ -393,6 +393,10 @@ body {
   cursor: pointer;
 }
 
+.graph-path-nav {
+  cursor: pointer;
+}
+
 .graph-thread.is-thread-active {
   text-decoration-style: solid;
   background: var(--focus);
