@@ -616,6 +616,29 @@ body {
     print-color-adjust: exact;
   }
 
+  html.print-theme-dark {
+    color-scheme: dark;
+    --bg: #0b0b0b;
+    --fg: #faf5ef;
+    --muted: rgba(250, 245, 239, 0.74);
+    --hairline: rgba(250, 245, 239, 0.16);
+    --panel: rgba(250, 245, 239, 0.04);
+    --map-bg: #101010;
+    --map-grid: rgba(250, 245, 239, 0.06);
+    --map-node-bg: #faf5ef;
+    --map-node-border: #faf5ef;
+    --map-node-font: #faf5ef;
+    --map-edge: rgba(250, 245, 239, 0.34);
+    --map-edge-highlight: #faf5ef;
+    --text-block-bg: rgba(11, 11, 11, 0.73);
+  }
+
+  html.print-theme-dark,
+  body.print-theme-dark {
+    background: #0b0b0b !important;
+    color: #faf5ef !important;
+  }
+
   .pane-resizer,
   .column-resizer,
   .context-preview,

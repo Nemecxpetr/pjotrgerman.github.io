@@ -79,6 +79,7 @@
     (function () {
       const params = new URLSearchParams(window.location.search);
       const printFlag = String(params.get("print") || "").trim().toLowerCase();
+      const printTheme = String(params.get("printTheme") || "").trim().toLowerCase();
       const isPrintMode = printFlag === "1" || printFlag === "true" || printFlag === "yes";
       if (!isPrintMode) {
         return;
@@ -86,6 +87,10 @@
       document.body.dataset.soundToggle = "off";
       document.documentElement.classList.add("print-mode");
       document.body.classList.add("print-mode");
+      if (printTheme === "dark") {
+        document.documentElement.classList.add("print-theme-dark");
+        document.body.classList.add("print-theme-dark");
+      }
     })();
   </script>
   <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
