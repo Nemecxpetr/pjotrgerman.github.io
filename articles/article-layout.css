@@ -539,3 +539,121 @@ body {
     padding: 1rem 0.9rem 0.55rem;
   }
 }
+
+.print-mode .sound-toggle {
+  display: none !important;
+}
+
+.print-mode .article-section,
+.print-mode .article-section.is-hidden,
+.print-mode .article-section[hidden] {
+  display: grid !important;
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --fg: #000000;
+    --muted: rgba(0, 0, 0, 0.75);
+    --hairline: rgba(0, 0, 0, 0.2);
+    --panel: rgba(0, 0, 0, 0.03);
+    --map-bg: #ffffff;
+    --map-grid: rgba(0, 0, 0, 0.08);
+    --map-node-bg: #000000;
+    --map-node-border: #000000;
+    --map-node-font: #000000;
+    --map-edge: rgba(0, 0, 0, 0.26);
+    --map-edge-highlight: #000000;
+    --accent-blue: #1daada;
+    --text-block-bg: rgba(255, 255, 255, 0.72);
+  }
+
+  html,
+  body {
+    height: auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pane-resizer,
+  .column-resizer,
+  .context-preview,
+  .desktop-page-header,
+  .sound-toggle,
+  .map-help {
+    display: none !important;
+  }
+
+  .essay-layout {
+    display: block;
+    height: auto;
+  }
+
+  .mask-layer {
+    display: none !important;
+  }
+
+  #fx {
+    display: none !important;
+  }
+
+  .print-include-fx #fx {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .map-pane {
+    display: block;
+    padding: 0 0 0.16in;
+    margin: 0 0 0.16in;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .map-header {
+    display: grid;
+    margin-bottom: 0.08in;
+  }
+
+  .mind-map {
+    min-height: 3.2in;
+    height: 3.2in;
+    border-radius: 12px;
+  }
+
+  .article-pane {
+    overflow: visible !important;
+    padding: 0;
+  }
+
+  .article-content {
+    display: grid;
+    gap: 0.9rem;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .article-meta {
+    margin: 0;
+  }
+
+  .article-section,
+  .article-section.is-hidden,
+  .article-section[hidden] {
+    display: grid !important;
+    gap: 0.88rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 0;
+    box-shadow: none;
+  }
+}

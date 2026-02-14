@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Postoj ke zvukovému v rámci hudební sceny ČR",
-    "subtitle": "",
+    "subtitle": "Budoucnost soundartu",
     "author": "Ing. Petr Němec",
     "updated": "2026-02-12"
   },
@@ -9,8 +9,9 @@
     { "id": "zvuk", "label": "Zvuk", "section": "zvuk", "size": 20, "importance": 1 },
     { "id": "hudba", "label": "Hudba", "section": "hudba", "size": 19, "importance": 2 },
     { "id": "listening", "label": "Poslech", "section": "listening", "size": 18, "importance": 2 },
+    { "id": "mysterium", "label": "Tajemství", "section": "mysterium", "size": 18, "importance": 3},
     { "id": "budoucnost", "label": "Budoucnost", "section": "budoucnost", "size": 18, "importance": 4 },
-    { "id": "akce", "label": "Akce", "section": "akce", "size": 18, "importance": 3 },
+    { "id": "akce", "label": "Eventy", "section": "akce", "size": 18, "importance": 3 },
     { "id": "zkusenosti", "label": "Zkušenosti", "section": "zkusenosti", "size": 18, "importance": 5 },
     { "id": "field", "label": "Field Recording", "section": "field", "size": 18, "importance": 3 },
     { "id": "prostor", "label": "Prostor", "section": "prostor", "size": 19, "importance": 4 }
@@ -21,6 +22,7 @@
     { "from": "zvuk", "to": "listening" },
     { "from": "listening", "to": "akce" },
     { "from": "listening", "to": "budoucnost" },
+    { "from": "listening", "to": "mysterium"},
     { "from": "akce", "to": "zkusenosti" },
     { "from": "akce", "to": "budoucnost" }
   ]

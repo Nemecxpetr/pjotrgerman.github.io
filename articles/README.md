@@ -96,3 +96,26 @@ Notes:
 
 The page loads content via `fetch()`, so use a local server while testing.
 Opening the file directly via `file://` may fail in some browsers.
+
+## PDF export pipeline
+
+Use the script below to generate a print-styled PDF that keeps the graph at
+the top, expands all sections, and hides the sound toggle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\articles\export-article-pdf.ps1 -Article czech-scene-sound
+```
+
+Output defaults to:
+
+`articles/output/czech-scene-sound.pdf`
+
+Optional parameters:
+
+- `-OutputPath articles/output/custom-name.pdf`
+- `-Port 4173`
+- `-LoadBudgetMs 12000`
+
+Print rendering mode is also available directly in browser via:
+
+`/articles/?article=czech-scene-sound&print=1`

@@ -22,8 +22,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const PREVIEW_SOURCE_TEXT = "text";
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
-
-  const articleKey = new URLSearchParams(window.location.search).get("article") || DEFAULT_ARTICLE;
+  const searchParams = new URLSearchParams(window.location.search);
+  const articleKey = searchParams.get("article") || DEFAULT_ARTICLE;
+  const printModeEnabled = isPrintModeEnabled(searchParams);
 
   const titleEl = document.getElementById("article-title");
   const subtitleEl = document.getElementById("article-subtitle");
@@ -86,7 +87,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let suppressContextAnchorScrollReset = false;
   let contextJumpAligning = false;
   let activePreviewSource = "";
-  const theme = readThemeValues();
+  let printFitLoopTimerId = null;
+  let printMediaQueryList = null;
+  let theme = readThemeValues();
 
   init().catch((error) => {
     articleContent.innerHTML = `<p class="error">Failed to load "${articleKey}". ${escapeHtml(error.message)}</p>`;
@@ -115,7 +118,12 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     installMap(mapConfig);
     installTextPathHover();
     installThreadLinks();
-    restoreHash();
+    initPrintLifecycle();
+    if (printModeEnabled) {
+      initPrintModeLayout();
+    } else {
+      restoreHash();
+    }
   }
 
   function hydrateThreadPlaceholders() {
@@ -191,6 +199,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       nodeBaseSizeById.set(node.id, baseSize);
       return {
         ...node,
+        __customColor: node.color || null,
+        __customBorderWidth: node.borderWidth || null,
         shape: node.shape || "dot",
         font: {
           face: "IBM Plex Mono",
@@ -369,6 +379,177 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (updateHash) {
       window.history.replaceState(null, "", `#${sectionId}`);
     }
+  }
+
+  function showAllSections() {
+    selectedSectionId = null;
+    for (const section of sectionEls) {
+      section.classList.remove(activeClass, "is-hidden");
+      section.hidden = false;
+    }
+    resetContextShiftBlocks();
+  }
+
+  function initPrintModeLayout() {
+    document.documentElement.classList.add("print-mode");
+    document.body.classList.add("print-mode");
+    showAllSections();
+    setPulsingNode(null);
+
+    const fitMap = () => {
+      fitMapForPrint(4);
+    };
+
+    if (network) {
+      network.once("stabilizationIterationsDone", () => {
+        fitMap();
+      });
+    }
+
+    window.setTimeout(fitMap, 420);
+    window.setTimeout(fitMap, 1400);
+    window.setTimeout(() => {
+      startPrintFitLoop(1500);
+    }, 220);
+    window.addEventListener("resize", () => {
+      fitMapForPrint(2);
+    }, { passive: true });
+  }
+
+  function initPrintLifecycle() {
+    const prepareForPrint = () => {
+      syncThemeFromCss();
+      if (printModeEnabled) {
+        showAllSections();
+      }
+      fitMapForPrint(5);
+      startPrintFitLoop(2400);
+    };
+
+    const clearAfterPrint = () => {
+      syncThemeFromCss();
+      stopPrintFitLoop();
+    };
+
+    window.addEventListener("beforeprint", prepareForPrint);
+    window.addEventListener("afterprint", clearAfterPrint);
+
+    if (typeof window.matchMedia === "function") {
+      printMediaQueryList = window.matchMedia("print");
+      const onPrintQueryChange = (event) => {
+        if (event.matches) {
+          prepareForPrint();
+        } else {
+          clearAfterPrint();
+        }
+      };
+
+      if (typeof printMediaQueryList.addEventListener === "function") {
+        printMediaQueryList.addEventListener("change", onPrintQueryChange);
+      } else if (typeof printMediaQueryList.addListener === "function") {
+        printMediaQueryList.addListener(onPrintQueryChange);
+      }
+    }
+  }
+
+  function startPrintFitLoop(durationMs) {
+    stopPrintFitLoop();
+    const duration = Math.max(300, Number(durationMs) || 0);
+    const deadlineAt = performance.now() + duration;
+
+    const tick = () => {
+      fitMapForPrint(2);
+      if (performance.now() >= deadlineAt) {
+        printFitLoopTimerId = null;
+        return;
+      }
+      printFitLoopTimerId = window.setTimeout(tick, 170);
+    };
+
+    tick();
+  }
+
+  function stopPrintFitLoop() {
+    if (printFitLoopTimerId !== null) {
+      window.clearTimeout(printFitLoopTimerId);
+      printFitLoopTimerId = null;
+    }
+  }
+
+  function syncThemeFromCss() {
+    theme = readThemeValues();
+    applyThemeToNetwork();
+  }
+
+  function applyThemeToNetwork() {
+    if (!nodesDataSet || !network) {
+      return;
+    }
+
+    const nodes = nodesDataSet.get();
+    const maxImportanceLevel = getMaxImportanceLevel(nodes);
+    const updates = [];
+    for (const node of nodes) {
+      const level = getNodeImportanceLevel(node);
+      const importanceStyle = buildImportanceStyle(level, maxImportanceLevel);
+      const customColor = node.__customColor || null;
+      const customBorderWidth = Number(node.__customBorderWidth);
+      const currentFont = node.font && typeof node.font === "object" ? node.font : {};
+
+      updates.push({
+        id: node.id,
+        color: customColor || importanceStyle.color,
+        borderWidth: Number.isFinite(customBorderWidth) && customBorderWidth > 0
+          ? customBorderWidth
+          : importanceStyle.borderWidth,
+        font: {
+          ...currentFont,
+          color: theme.nodeFont
+        }
+      });
+    }
+
+    if (updates.length) {
+      nodesDataSet.update(updates);
+    }
+
+    network.redraw();
+  }
+
+  function fitMapForPrint(passes) {
+    if (!network || !nodesDataSet) {
+      return;
+    }
+    const nodeIds = nodesDataSet.getIds();
+    if (!nodeIds.length) {
+      return;
+    }
+
+    const totalPasses = Math.max(1, Number(passes) || 1);
+    let completedPasses = 0;
+    const runPass = () => {
+      if (!network) {
+        return;
+      }
+      network.redraw();
+      network.fit({
+        animation: false,
+        nodes: nodeIds
+      });
+      const fittedScale = network.getScale();
+      if (Number.isFinite(fittedScale) && fittedScale > 0) {
+        network.moveTo({
+          scale: fittedScale * 0.94,
+          animation: false
+        });
+      }
+      completedPasses += 1;
+      if (completedPasses < totalPasses) {
+        window.setTimeout(runPass, 90);
+      }
+    };
+
+    runPass();
   }
 
   function selectSection(sectionId, force) {
@@ -2393,5 +2574,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   function getCssVar(rootStyles, variable, fallback) {
     const value = rootStyles.getPropertyValue(variable).trim();
     return value || fallback;
+  }
+
+  function isPrintModeEnabled(params) {
+    const raw = String(params.get("print") || "").trim().toLowerCase();
+    return raw === "1" || raw === "true" || raw === "yes";
   }
 })();
