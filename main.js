@@ -118,10 +118,73 @@ function getBackgroundFxOptions() {
   return options;
 }
 
+function initPrintFxBridge() {
+  const fxCanvas = document.getElementById("fx");
+  if (!fxCanvas) {
+    return;
+  }
+
+  const canvasHasVisibleFxPixels = (canvas) => {
+    const width = Number(canvas.width);
+    const height = Number(canvas.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 2 || height < 2) {
+      return false;
+    }
+
+    try {
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        return false;
+      }
+
+      // Probe a sparse grid so we avoid reading the full frame buffer.
+      const cols = 18;
+      const rows = 12;
+      const alphaThreshold = 10;
+      for (let yi = 0; yi < rows; yi += 1) {
+        const y = Math.max(0, Math.min(height - 1, Math.floor(((yi + 0.5) / rows) * height)));
+        for (let xi = 0; xi < cols; xi += 1) {
+          const x = Math.max(0, Math.min(width - 1, Math.floor(((xi + 0.5) / cols) * width)));
+          const pixel = ctx.getImageData(x, y, 1, 1).data;
+          if (pixel && pixel[3] > alphaThreshold) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const markPrintState = () => {
+    const styles = window.getComputedStyle(fxCanvas);
+    const rect = fxCanvas.getBoundingClientRect();
+    const canvasVisible = styles.display !== "none"
+      && styles.visibility !== "hidden"
+      && Number.parseFloat(styles.opacity || "1") > 0
+      && rect.width > 0
+      && rect.height > 0;
+    const visible = canvasVisible && canvasHasVisibleFxPixels(fxCanvas);
+
+    document.documentElement.classList.toggle("print-include-fx", visible);
+    document.body.classList.toggle("print-include-fx", visible);
+  };
+
+  const clearPrintState = () => {
+    document.documentElement.classList.remove("print-include-fx");
+    document.body.classList.remove("print-include-fx");
+  };
+
+  window.addEventListener("beforeprint", markPrintState);
+  window.addEventListener("afterprint", clearPrintState);
+}
+
 function bootstrap() {
   initYearLabel();
   initReleases();
   initSoundToggle();
+  initPrintFxBridge();
 
   initBackgroundFx(getBackgroundFxOptions());
 }
