@@ -589,6 +589,10 @@ body {
 }
 
 @media print {
+  @page {
+    margin: 0;
+  }
+
   html:not(.print-style-screen) {
     color-scheme: light;
     --bg: #ffffff;
@@ -618,10 +622,23 @@ body {
 
   html.print-style-screen,
   body.print-style-screen {
-    background: var(--bg) !important;
+    background: var(--text-block-bg) !important;
     color: var(--fg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  body.print-style-screen {
+    padding: 4mm !important;
+    box-sizing: border-box;
+  }
+
+  html.print-style-screen .essay-layout {
+    background: var(--text-block-bg) !important;
+  }
+
+  html.print-style-screen .map-pane {
+    background: var(--text-block-bg) !important;
   }
 
   html.print-theme-dark {
