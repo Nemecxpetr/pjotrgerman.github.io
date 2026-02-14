@@ -300,6 +300,10 @@ body {
   letter-spacing: 0.05em;
 }
 
+.article-meta .print-source-link {
+  display: none;
+}
+
 .article-section {
   display: grid;
   gap: 0.88rem;
@@ -648,6 +652,22 @@ body {
 
   .article-meta {
     margin: 0;
+  }
+
+  .article-meta .print-source-link {
+    display: block;
+    margin-top: 0.32rem;
+    color: var(--fg);
+    font: 400 0.78rem/1.45 var(--font-main);
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .article-meta .print-source-link a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
   }
 
   .article-section,

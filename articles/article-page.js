@@ -20,6 +20,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const DESKTOP_PREVIEW_QUERY = "(min-width: 1200px)";
   const PREVIEW_SOURCE_GRAPH = "graph";
   const PREVIEW_SOURCE_TEXT = "text";
+  const PRINT_SOURCE_URL = "https://nemecxpetr.github.io/pjotrgerman.github.io/articles/";
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
   const searchParams = new URLSearchParams(window.location.search);
@@ -177,7 +178,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
     const metaBlock = document.createElement("div");
     metaBlock.className = "article-meta";
-    metaBlock.innerHTML = `<p>Article: ${escapeHtml(titleEl.textContent)}</p>`;
+    metaBlock.innerHTML = `
+      <p>Article: ${escapeHtml(titleEl.textContent)}</p>
+      <p class="print-source-link">
+        Read online:
+        <a href="${escapeHtml(PRINT_SOURCE_URL)}">${escapeHtml(PRINT_SOURCE_URL)}</a>
+      </p>
+    `;
     articleContent.prepend(metaBlock);
   }
 
