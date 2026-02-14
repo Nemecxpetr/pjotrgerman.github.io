@@ -647,6 +647,13 @@ body {
     color: #faf5ef !important;
   }
 
+  /* Keep graph readable in dark PDF mode even if vis layers override backgrounds. */
+  html.print-theme-dark .mind-map,
+  html.print-theme-dark .mind-map .vis-network,
+  html.print-theme-dark .mind-map canvas {
+    background-color: #101010 !important;
+  }
+
   .pane-resizer,
   .column-resizer,
   .context-preview,
