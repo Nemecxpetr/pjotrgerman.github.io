@@ -284,6 +284,36 @@ body {
   font: 400 0.84rem/1.6 var(--font-main);
 }
 
+.context-preview-pager {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+.context-preview-pager-btn {
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 8px;
+  padding: 0.2rem 0.44rem;
+  font: 500 0.72rem/1.2 var(--font-main);
+  cursor: pointer;
+}
+
+.context-preview-pager-btn:hover,
+.context-preview-pager-btn:focus-visible {
+  border-color: var(--accent-blue);
+  outline: none;
+}
+
+.context-preview-pager-status {
+  text-align: center;
+  color: var(--muted);
+  font: 500 0.72rem/1.2 var(--font-main);
+}
+
 .article-meta {
   border-bottom: 1px solid var(--hairline);
   background: var(--text-block-bg);

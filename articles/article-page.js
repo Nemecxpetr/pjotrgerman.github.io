@@ -90,6 +90,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let contextJumpAligning = false;
   let activePreviewSource = "";
   let contextPreviewDismissInstalled = false;
+  let contextPreviewPagerInstalled = false;
+  let contextPreviewPages = [];
+  let contextPreviewPageIndex = 0;
   let printFitLoopTimerId = null;
   let printMediaQueryList = null;
   let theme = readThemeValues();
@@ -1113,20 +1116,11 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         marker.classList.add("is-active");
         setHighlightedPath(edgeIds, nodeIds);
         centerGraphOnNodes(nodeIds);
-        const previewTarget = resolvePreviewTargetForMarker(marker, sectionId, nodeIds);
-        if (previewTarget) {
-          showContextPreviewForSection(previewTarget.sectionId, {
+        const previewTargets = resolvePreviewTargetsForMarker(marker, sectionId, nodeIds);
+        if (previewTargets.length) {
+          showContextPreviewForPages(previewTargets, {
             source: PREVIEW_SOURCE_TEXT,
-            title: previewTarget.title,
-            meta: previewTarget.meta,
-            focusText: previewTarget.focusText
-          });
-        } else if (sectionId) {
-          showContextPreviewForSection(sectionId, {
-            source: PREVIEW_SOURCE_TEXT,
-            title: getSectionHeading(sectionId),
-            meta: "",
-            focusText: getPreviewTextFromMarker(marker)
+            initialIndex: 0
           });
         }
       };
@@ -1436,49 +1430,62 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     return (currentIndex + 1) % mentions.length;
   }
 
-  function resolvePreviewTargetForMarker(marker, sectionId, nodeIds) {
+  function resolvePreviewTargetsForMarker(marker, sectionId, nodeIds) {
+    const targets = [];
+    const appendTarget = (targetSectionId, focusText = "") => {
+      const cleanSectionId = String(targetSectionId || "").trim();
+      if (!cleanSectionId) {
+        return;
+      }
+      targets.push({
+        sectionId: cleanSectionId,
+        title: getSectionHeading(cleanSectionId),
+        meta: "",
+        focusText
+      });
+    };
+
     const threadId = getMarkerThreadId(marker);
     if (threadId) {
       const mentions = threadMentionsById.get(threadId) || [];
       const currentIndex = mentions.findIndex((item) => item.marker === marker);
       if (mentions.length > 1 && currentIndex >= 0) {
-        const nextIndex = findNextThreadIndex(mentions, currentIndex);
-        const nextMention = mentions[nextIndex];
-        if (nextMention && nextMention.sectionId) {
-          return {
-            sectionId: nextMention.sectionId,
-            title: getSectionHeading(nextMention.sectionId),
-            meta: "",
-            focusText: getPreviewTextFromMarker(nextMention.marker)
-          };
+        for (let offset = 1; offset < mentions.length; offset += 1) {
+          const index = (currentIndex + offset) % mentions.length;
+          const mention = mentions[index];
+          if (!mention || !mention.sectionId) {
+            continue;
+          }
+          appendTarget(mention.sectionId, getPreviewTextFromMarker(mention.marker));
         }
       }
+    }
+    if (targets.length) {
+      return targets;
     }
 
     if (Array.isArray(nodeIds) && nodeIds.length) {
       const candidates = nodeIds
         .map((nodeId) => getSectionIdForNode(nodeId))
-        .filter(Boolean);
-      const firstOther = candidates.find((candidate) => candidate !== sectionId);
-      const targetSectionId = firstOther || candidates[0];
-      if (targetSectionId) {
-        return {
-          sectionId: targetSectionId,
-          title: getSectionHeading(targetSectionId),
-          meta: ""
-        };
+        .filter(Boolean)
+        .filter((candidate, index, all) => all.indexOf(candidate) === index);
+      const orderedCandidates = [
+        ...candidates.filter((candidate) => candidate !== sectionId),
+        ...candidates.filter((candidate) => candidate === sectionId)
+      ];
+      for (const candidate of orderedCandidates) {
+        appendTarget(candidate, "");
       }
+    }
+    if (targets.length) {
+      return targets;
     }
 
     if (sectionId) {
-      return {
-        sectionId,
-        title: getSectionHeading(sectionId),
-        meta: ""
-      };
+      appendTarget(sectionId, getPreviewTextFromMarker(marker));
     }
 
-    return null;
+    return targets;
   }
 
   function jumpToThreadMention(target, desiredRowPx, desiredColumnPx) {
@@ -2495,14 +2502,14 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (!contextPreviewPane || !contextPreviewTitle || !contextPreviewMeta || !contextPreviewBody) {
       return;
     }
+    installContextPreviewPager();
     installContextPreviewDismiss();
 
     const syncPreviewByViewport = () => {
       if (isContextPreviewEnabled()) {
         renderContextPreviewPlaceholder();
       } else {
-        activePreviewSource = "";
-        contextPreviewBody.innerHTML = "";
+        renderContextPreviewPlaceholder();
       }
     };
 
@@ -2534,6 +2541,34 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     });
   }
 
+  function installContextPreviewPager() {
+    if (contextPreviewPagerInstalled || !contextPreviewPane) {
+      return;
+    }
+    contextPreviewPagerInstalled = true;
+
+    contextPreviewPane.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element) || contextPreviewPages.length < 2) {
+        return;
+      }
+      const control = event.target.closest("[data-context-preview-nav]");
+      if (!(control instanceof HTMLElement)) {
+        return;
+      }
+      const direction = String(control.dataset.contextPreviewNav || "").toLowerCase();
+      if (direction === "prev") {
+        contextPreviewPageIndex = (
+          contextPreviewPageIndex - 1 + contextPreviewPages.length
+        ) % contextPreviewPages.length;
+      } else if (direction === "next") {
+        contextPreviewPageIndex = (contextPreviewPageIndex + 1) % contextPreviewPages.length;
+      } else {
+        return;
+      }
+      renderContextPreviewPage();
+    });
+  }
+
   function isContextPreviewEnabled() {
     return Boolean(contextPreviewPane && contextPreviewTitle && contextPreviewMeta && contextPreviewBody)
       && desktopPreviewMedia.matches;
@@ -2558,40 +2593,112 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       return;
     }
     activePreviewSource = "";
+    contextPreviewPages = [];
+    contextPreviewPageIndex = 0;
     contextPreviewTitle.textContent = "";
     contextPreviewMeta.textContent = "";
     contextPreviewBody.innerHTML = "";
   }
 
   function showContextPreviewForSection(sectionId, options = {}) {
+    showContextPreviewForPages([{
+      sectionId,
+      title: options.title || getSectionHeading(sectionId),
+      meta: options.meta || "",
+      focusText: options.focusText || ""
+    }], {
+      source: options.source || "",
+      initialIndex: 0
+    });
+  }
+
+  function showContextPreviewForPages(pages, options = {}) {
     if (!isContextPreviewEnabled()) {
       return;
     }
-    const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+    const normalizedPages = normalizeContextPreviewPages(pages);
+    if (!normalizedPages.length) {
+      return;
+    }
+
+    contextPreviewPages = normalizedPages;
+    const initialIndex = Number(options.initialIndex);
+    if (Number.isFinite(initialIndex)) {
+      contextPreviewPageIndex = clampNumber(Math.trunc(initialIndex), 0, contextPreviewPages.length - 1);
+    } else {
+      contextPreviewPageIndex = 0;
+    }
+    activePreviewSource = options.source || "";
+    renderContextPreviewPage();
+  }
+
+  function normalizeContextPreviewPages(pages) {
+    if (!Array.isArray(pages)) {
+      return [];
+    }
+
+    const result = [];
+    for (const page of pages) {
+      if (!page || typeof page !== "object") {
+        continue;
+      }
+      const sectionId = String(page.sectionId || "").trim();
+      if (!sectionId) {
+        continue;
+      }
+      const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+      if (!(section instanceof HTMLElement)) {
+        continue;
+      }
+      result.push({
+        sectionId,
+        title: page.title || getSectionHeading(sectionId),
+        meta: page.meta || "",
+        focusText: trimPreviewText(page.focusText || "", 220)
+      });
+    }
+    return result;
+  }
+
+  function renderContextPreviewPage() {
+    if (!contextPreviewTitle || !contextPreviewMeta || !contextPreviewBody || !contextPreviewPages.length) {
+      return;
+    }
+    contextPreviewPageIndex = clampNumber(contextPreviewPageIndex, 0, contextPreviewPages.length - 1);
+    const page = contextPreviewPages[contextPreviewPageIndex];
+    if (!page) {
+      return;
+    }
+
+    const section = articleContent.querySelector(`#${cssEscape(page.sectionId)}`);
     if (!(section instanceof HTMLElement)) {
       return;
     }
 
-    const title = options.title || getSectionHeading(sectionId);
+    const title = page.title || getSectionHeading(page.sectionId);
     const paragraphs = buildSectionPreviewParagraphs(section);
-    const focusText = trimPreviewText(options.focusText || "", 220);
+    const focusText = trimPreviewText(page.focusText || "", 220);
 
     contextPreviewTitle.textContent = title || "Context";
-    contextPreviewMeta.textContent = options.meta || "";
-    if (paragraphs.length || focusText) {
-      const blocks = [];
-      if (focusText) {
-        blocks.push(`<p><strong>${escapeHtml(focusText)}</strong></p>`);
-      }
-      for (const paragraph of paragraphs) {
-        blocks.push(`<p>${escapeHtml(paragraph)}</p>`);
-      }
-      contextPreviewBody.innerHTML = blocks.join("");
-    } else {
-      contextPreviewBody.innerHTML = "<p>No preview text available.</p>";
+    contextPreviewMeta.textContent = page.meta || "";
+    const blocks = [];
+    if (contextPreviewPages.length > 1) {
+      blocks.push(renderContextPreviewPagerMarkup(contextPreviewPageIndex + 1, contextPreviewPages.length));
     }
+    if (focusText) {
+      blocks.push(`<p><strong>${escapeHtml(focusText)}</strong></p>`);
+    }
+    for (const paragraph of paragraphs) {
+      blocks.push(`<p>${escapeHtml(paragraph)}</p>`);
+    }
+    if (!paragraphs.length && !focusText) {
+      blocks.push("<p>No preview text available.</p>");
+    }
+    contextPreviewBody.innerHTML = blocks.join("");
+  }
 
-    activePreviewSource = options.source || "";
+  function renderContextPreviewPagerMarkup(currentPage, totalPages) {
+    return `<div class="context-preview-pager" role="group" aria-label="Context preview pages"><button type="button" class="context-preview-pager-btn" data-context-preview-nav="prev" aria-label="Previous context">Prev</button><span class="context-preview-pager-status">${currentPage} / ${totalPages}</span><button type="button" class="context-preview-pager-btn" data-context-preview-nav="next" aria-label="Next context">Next</button></div>`;
   }
 
   function buildSectionPreviewParagraphs(section) {
