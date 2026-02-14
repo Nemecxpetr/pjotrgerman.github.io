@@ -80,6 +80,10 @@
       const params = new URLSearchParams(window.location.search);
       const printFlag = String(params.get("print") || "").trim().toLowerCase();
       const printTheme = String(params.get("printTheme") || "").trim().toLowerCase();
+      const printStyle = String(params.get("printStyle") || "").trim().toLowerCase();
+      const prefersDarkTheme = Boolean(
+        window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
       const isPrintMode = printFlag === "1" || printFlag === "true" || printFlag === "yes";
       if (!isPrintMode) {
         return;
@@ -87,7 +91,11 @@
       document.body.dataset.soundToggle = "off";
       document.documentElement.classList.add("print-mode");
       document.body.classList.add("print-mode");
-      if (printTheme === "dark") {
+      if (printStyle === "screen") {
+        document.documentElement.classList.add("print-style-screen");
+        document.body.classList.add("print-style-screen");
+      }
+      if (printTheme === "dark" || (printTheme !== "light" && prefersDarkTheme)) {
         document.documentElement.classList.add("print-theme-dark");
         document.body.classList.add("print-theme-dark");
       }

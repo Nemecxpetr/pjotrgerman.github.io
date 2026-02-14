@@ -589,7 +589,7 @@ body {
 }
 
 @media print {
-  :root {
+  html:not(.print-style-screen) {
     color-scheme: light;
     --bg: #ffffff;
     --fg: #000000;
@@ -607,11 +607,19 @@ body {
     --text-block-bg: rgba(255, 255, 255, 0.72);
   }
 
-  html,
-  body {
+  html:not(.print-style-screen),
+  body:not(.print-style-screen) {
     height: auto !important;
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html.print-style-screen,
+  body.print-style-screen {
+    background: var(--bg) !important;
+    color: var(--fg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -653,12 +661,26 @@ body {
     height: auto;
   }
 
-  .mask-layer {
+  html:not(.print-style-screen) .mask-layer {
     display: none !important;
   }
 
-  #fx {
+  html:not(.print-style-screen) #fx {
     display: none !important;
+  }
+
+  html.print-style-screen .mask-layer {
+    display: grid !important;
+  }
+
+  html.print-style-screen #fx {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
   }
 
   .print-include-fx #fx {

@@ -245,7 +245,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         zoomView: true
       },
       layout: {
-        improvedLayout: true
+        improvedLayout: true,
+        randomSeed: resolveMapLayoutSeed(mapConfig)
       },
       physics: {
         enabled: true,
@@ -368,6 +369,24 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         scrollToSection(sectionId);
       }
     });
+  }
+
+  function resolveMapLayoutSeed(mapConfig) {
+    const metaSeed = mapConfig && mapConfig.meta ? Number(mapConfig.meta.layoutSeed) : Number.NaN;
+    if (Number.isFinite(metaSeed)) {
+      return Math.trunc(metaSeed);
+    }
+    return hashStringToSeed(articleKey);
+  }
+
+  function hashStringToSeed(value) {
+    const text = String(value || "article-layout");
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return Math.abs(hash >>> 0) || 1;
   }
 
   function scrollToSection(sectionId, options = {}) {
