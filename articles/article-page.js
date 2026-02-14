@@ -20,6 +20,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const DESKTOP_PREVIEW_QUERY = "(min-width: 1200px)";
   const PREVIEW_SOURCE_GRAPH = "graph";
   const PREVIEW_SOURCE_TEXT = "text";
+  const STICKY_PREVIEW_UNTIL_PRIMARY_CLICK = true;
   const PRINT_SOURCE_URL = "https://nemecxpetr.github.io/pjotrgerman.github.io/articles/";
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
@@ -88,6 +89,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let suppressContextAnchorScrollReset = false;
   let contextJumpAligning = false;
   let activePreviewSource = "";
+  let contextPreviewDismissInstalled = false;
   let printFitLoopTimerId = null;
   let printMediaQueryList = null;
   let theme = readThemeValues();
@@ -1118,6 +1120,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
             title: previewTarget.title,
             meta: previewTarget.meta,
             focusText: previewTarget.focusText
+          });
+        } else if (sectionId) {
+          showContextPreviewForSection(sectionId, {
+            source: PREVIEW_SOURCE_TEXT,
+            title: getSectionHeading(sectionId),
+            meta: "",
+            focusText: getPreviewTextFromMarker(marker)
           });
         }
       };
@@ -2486,6 +2495,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (!contextPreviewPane || !contextPreviewTitle || !contextPreviewMeta || !contextPreviewBody) {
       return;
     }
+    installContextPreviewDismiss();
 
     const syncPreviewByViewport = () => {
       if (isContextPreviewEnabled()) {
@@ -2504,16 +2514,40 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
   }
 
+  function installContextPreviewDismiss() {
+    if (contextPreviewDismissInstalled) {
+      return;
+    }
+    contextPreviewDismissInstalled = true;
+
+    document.addEventListener("pointerdown", (event) => {
+      if (!event || event.button !== 0) {
+        return;
+      }
+      if (!isContextPreviewEnabled() || !activePreviewSource) {
+        return;
+      }
+      if (contextPreviewPane && event.target instanceof Node && contextPreviewPane.contains(event.target)) {
+        return;
+      }
+      clearContextPreview("", { force: true });
+    });
+  }
+
   function isContextPreviewEnabled() {
     return Boolean(contextPreviewPane && contextPreviewTitle && contextPreviewMeta && contextPreviewBody)
       && desktopPreviewMedia.matches;
   }
 
-  function clearContextPreview(source) {
+  function clearContextPreview(source, options = {}) {
+    const force = Boolean(options.force);
     if (!isContextPreviewEnabled()) {
       return;
     }
-    if (source && activePreviewSource && activePreviewSource !== source) {
+    if (!force && source && activePreviewSource && activePreviewSource !== source) {
+      return;
+    }
+    if (!force && STICKY_PREVIEW_UNTIL_PRIMARY_CLICK && activePreviewSource) {
       return;
     }
     renderContextPreviewPlaceholder();

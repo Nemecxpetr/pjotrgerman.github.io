@@ -20,6 +20,7 @@
     { "from": "zvuk", "to": "platformy" },
     { "from": "platformy", "to": "akce" },
     { "from": "hudba", "to": "mysterium" },
+    { "from": "hudba", "to": "platformy" },
     { "from": "listening", "to": "mysterium"}
   ]
 }

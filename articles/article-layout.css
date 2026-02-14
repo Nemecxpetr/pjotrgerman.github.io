@@ -558,6 +558,15 @@ body {
   display: grid !important;
 }
 
+.print-copyright {
+  display: block;
+  text-align: center;
+  color: var(--muted);
+  font: 500 0.75rem/1.2 var(--font-main);
+  letter-spacing: 0.02em;
+  margin: 0.9rem 0 1.1rem;
+}
+
 @media print {
   :root {
     color-scheme: light;
@@ -679,5 +688,9 @@ body {
     page-break-inside: avoid;
     margin: 0;
     box-shadow: none;
+  }
+
+  .print-copyright {
+    display: none !important;
   }
 }
