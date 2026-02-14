@@ -355,6 +355,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       clearContextPreview(PREVIEW_SOURCE_GRAPH);
     });
 
+    network.on("beforeDrawing", (ctx) => {
+      drawMapPrintBackdrop(ctx);
+    });
+
     network.on("afterDrawing", (ctx) => {
       drawStringEdges(ctx);
     });
@@ -1966,6 +1970,41 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     lastStringDrawAt = ts;
   }
 
+  function drawMapPrintBackdrop(ctx) {
+    if (!ctx || !document.documentElement.classList.contains("print-mode")) {
+      return;
+    }
+
+    const canvas = ctx.canvas;
+    if (!(canvas instanceof HTMLCanvasElement) || canvas.width < 2 || canvas.height < 2) {
+      return;
+    }
+
+    const deviceRatio = Math.max(1, window.devicePixelRatio || 1);
+    const gridStep = 24 * deviceRatio;
+    const mapBg = theme.mapBg || "#ffffff";
+    const mapGrid = theme.mapGrid || "rgba(0, 0, 0, 0.08)";
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = mapBg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = mapGrid;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0.5; x < canvas.width; x += gridStep) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+    }
+    for (let y = 0.5; y < canvas.height; y += gridStep) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawHighlightedPathNodes(ctx, positions) {
     if (!highlightedNodeIds.size) {
       return;
@@ -2798,6 +2837,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   function readThemeValues() {
     const rootStyles = window.getComputedStyle(document.documentElement);
     return {
+      mapBg: getCssVar(rootStyles, "--map-bg", "#f6f0e9"),
+      mapGrid: getCssVar(rootStyles, "--map-grid", "rgba(11,11,11,0.05)"),
       nodeBg: getCssVar(rootStyles, "--map-node-bg", "#0b0b0b"),
       nodeBorder: getCssVar(rootStyles, "--map-node-border", "#2f2f2f"),
       nodeFont: getCssVar(rootStyles, "--map-node-font", "#faf5ef"),
