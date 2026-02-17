@@ -160,6 +160,16 @@ body {
   overflow: hidden;
 }
 
+.mind-map,
+.mind-map canvas {
+  cursor: pointer;
+}
+
+.mind-map:active,
+.mind-map:active canvas {
+  cursor: grabbing;
+}
+
 .map-help {
   margin: 0;
   color: var(--muted);

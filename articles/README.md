@@ -41,6 +41,38 @@ Example:
 
 If IDs do not match, clicking that node will do nothing.
 
+## Optional multi-view maps (map within map)
+
+You can define multiple map views in one file and switch between them by
+clicking nodes:
+
+```json
+{
+  "defaultView": "root",
+  "views": {
+    "root": {
+      "nodes": [
+        { "id": "entities", "label": "Entities", "section": "entities", "openView": "entities" }
+      ],
+      "edges": []
+    },
+    "entities": {
+      "nodes": [
+        { "id": "back", "label": "Back", "section": "start", "openView": "root" }
+      ],
+      "edges": []
+    }
+  }
+}
+```
+
+Notes:
+
+- `openView` is optional on a node.
+- When a node has `openView`, click switches graph view.
+- If `openView` is missing, click keeps the existing section-jump behavior.
+- Existing single-view maps (`nodes` + `edges` at top level) still work.
+
 Optional node importance levels:
 
 - Add `"importance": <number>` to a node in `.map.json` (`1` is highest).
@@ -67,6 +99,11 @@ Selecting a node in the map switches the visible section below.
 
 3. Open:
 `/listening-notes-7q4m/?article=my-next-article`
+
+Optional clean URL:
+
+- Create `articles/<article-key>/index.html` that redirects to `../?article=<article-key>`.
+- Example added in this repo: `articles/perfo-map/index.html`.
 
 ## Formatting options in article HTML
 

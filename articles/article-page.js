@@ -26,6 +26,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const pageBaseUrl = getPageBaseUrl();
   const searchParams = new URLSearchParams(window.location.search);
   const articleKey = searchParams.get("article") || DEFAULT_ARTICLE;
+  const requestedMapViewKey = String(searchParams.get("view") || "").trim();
   const printModeEnabled = isPrintModeEnabled(searchParams);
 
   const titleEl = document.getElementById("article-title");
@@ -46,6 +47,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const desktopPreviewMedia = window.matchMedia(DESKTOP_PREVIEW_QUERY);
 
   let network = null;
+  let mapViewByKey = new Map();
+  let defaultMapViewKey = "root";
+  let currentMapViewKey = "";
+  let mapImpulseTrackingInstalled = false;
   let nodesDataSet = null;
   let sectionByNodeId = new Map();
   let nodeBySectionId = new Map();
@@ -102,12 +107,21 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   });
 
   async function init() {
-    const [mapConfig, articleHtml] = await Promise.all([
+    const [rawMapConfig, articleHtml] = await Promise.all([
       readJson(resolvePagePath(`content/${articleKey}.map.json`)),
       readText(resolvePagePath(`content/${articleKey}.html`))
     ]);
+    const mapViews = resolveMapViews(rawMapConfig);
+    mapViewByKey = mapViews.viewsByKey;
+    defaultMapViewKey = mapViews.defaultViewKey;
+    currentMapViewKey = mapViews.initialViewKey;
 
-    renderMeta(mapConfig.meta || {});
+    const initialMapConfig = mapViewByKey.get(currentMapViewKey);
+    if (!initialMapConfig) {
+      throw new Error(`Map view "${currentMapViewKey}" is not available.`);
+    }
+
+    renderMeta(rawMapConfig.meta || {});
     articleContent.innerHTML = articleHtml;
     hydrateThreadPlaceholders();
 
@@ -121,7 +135,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     initPaneResizer();
     initColumnResizer();
     initContextShiftSystem();
-    installMap(mapConfig);
+    installMap(initialMapConfig);
+    writeViewParam(currentMapViewKey);
     installTextPathHover();
     installThreadLinks();
     initPrintLifecycle();
@@ -198,12 +213,17 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       throw new Error("Map library or node data missing.");
     }
 
+    resetMapRuntimeState();
+    sectionByNodeId = new Map();
+    nodeBySectionId = new Map();
     nodeBaseSizeById = new Map();
     const maxImportanceLevel = getMaxImportanceLevel(mapConfig.nodes);
     const nodes = mapConfig.nodes.map((node) => {
       const sectionId = String(node.section || "");
       sectionByNodeId.set(node.id, sectionId);
-      nodeBySectionId.set(sectionId, node.id);
+      if (sectionId) {
+        nodeBySectionId.set(sectionId, node.id);
+      }
       const level = getNodeImportanceLevel(node);
       const importanceStyle = buildImportanceStyle(level, maxImportanceLevel);
       const baseSize = Math.max(6, (node.size || 17) + importanceStyle.sizeDelta);
@@ -235,7 +255,21 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       edges: edgeDataSet
     };
 
-    network = new vis.Network(mapContainer, visData, {
+    const networkOptions = buildMapNetworkOptions(mapConfig);
+
+    if (!network) {
+      network = new vis.Network(mapContainer, visData, networkOptions);
+      initMapImpulseTracking();
+      bindMapEvents();
+    } else {
+      network.setData(visData);
+      network.setOptions(networkOptions);
+    }
+
+  }
+
+  function buildMapNetworkOptions(mapConfig) {
+    return {
       autoResize: true,
       interaction: {
         hover: true,
@@ -249,7 +283,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         randomSeed: resolveMapLayoutSeed(mapConfig)
       },
       physics: {
-        enabled: true,
+        enabled: false,
         solver: "forceAtlas2Based",
         forceAtlas2Based: {
           springLength: 110,
@@ -286,13 +320,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
           roundness: 0.16
         }
       }
-    });
+    };
+  }
 
-    network.once("stabilizationIterationsDone", () => {
-      network.setOptions({ physics: { enabled: false } });
-    });
-
-    initMapImpulseTracking();
+  function bindMapEvents() {
+    if (!network) {
+      return;
+    }
 
     network.on("dragStart", () => {
       mapIsInteracting = true;
@@ -368,6 +402,18 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       if (!nodeId) {
         return;
       }
+      const nodeData = getNodeData(nodeId);
+      const targetViewKey = nodeData && typeof nodeData.openView === "string"
+        ? nodeData.openView.trim()
+        : "";
+      if (targetViewKey) {
+        const switched = switchMapView(targetViewKey, {
+          preferredSectionId: String(nodeData && nodeData.section ? nodeData.section : "").trim()
+        });
+        if (switched) {
+          return;
+        }
+      }
       const sectionId = getSectionIdForNode(nodeId);
       if (sectionId) {
         scrollToSection(sectionId);
@@ -375,12 +421,194 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     });
   }
 
+  function switchMapView(viewKey, options = {}) {
+    const resolvedViewKey = resolveMapViewKey(viewKey, mapViewByKey);
+    if (!resolvedViewKey || resolvedViewKey === currentMapViewKey) {
+      return false;
+    }
+
+    const nextMapConfig = mapViewByKey.get(resolvedViewKey);
+    if (!nextMapConfig) {
+      return false;
+    }
+
+    currentMapViewKey = resolvedViewKey;
+    installMap(nextMapConfig);
+    syncSelectionAfterMapViewSwitch(options.preferredSectionId);
+    writeViewParam(currentMapViewKey);
+    clearContextPreview("", { force: true });
+    return true;
+  }
+
+  function syncSelectionAfterMapViewSwitch(preferredSectionId) {
+    if (printModeEnabled) {
+      showAllSections();
+      return;
+    }
+
+    const preferredId = String(preferredSectionId || "").trim();
+    if (preferredId && nodeBySectionId.has(preferredId)) {
+      scrollToSection(preferredId, {
+        resetScroll: false,
+        scrollBehavior: "auto",
+        shouldFocusNode: true,
+        updateHash: false
+      });
+      return;
+    }
+
+    if (selectedSectionId && nodeBySectionId.has(selectedSectionId)) {
+      syncSelectedNode(selectedSectionId, false);
+      return;
+    }
+
+    const firstSectionWithNode = sectionEls.find((section) => nodeBySectionId.has(section.id));
+    if (firstSectionWithNode) {
+      scrollToSection(firstSectionWithNode.id, {
+        resetScroll: false,
+        scrollBehavior: "auto",
+        shouldFocusNode: false,
+        updateHash: false
+      });
+      return;
+    }
+
+    setPulsingNode(null);
+    if (network) {
+      network.unselectAll();
+      network.redraw();
+    }
+  }
+
+  function resetMapRuntimeState() {
+    setPulsingNode(null);
+    if (edgeWaveFrameId !== null) {
+      window.cancelAnimationFrame(edgeWaveFrameId);
+      edgeWaveFrameId = null;
+    }
+    if (mapZoomIdleTimer) {
+      window.clearTimeout(mapZoomIdleTimer);
+      mapZoomIdleTimer = null;
+    }
+    edgeWaveLastTick = 0;
+    lastStringDrawAt = 0;
+    hoveredEdgeId = null;
+    mapIsInteracting = false;
+    lastNodeImpulseId = null;
+    lastNodeImpulseAt = 0;
+    highlightedEdgeIds = new Set();
+    highlightedNodeIds = new Set();
+    edgeWaveStateById = new Map();
+    nodeWaveStateById = new Map();
+    nodeMotionById = new Map();
+    prevNodePositionById = new Map();
+    edgeLastSoundAtById = new Map();
+  }
+
+  function resolveMapViews(rawMapConfig) {
+    const viewsByKey = new Map();
+    const fallbackMeta = rawMapConfig && rawMapConfig.meta && typeof rawMapConfig.meta === "object"
+      ? rawMapConfig.meta
+      : {};
+    const rawViews = rawMapConfig && rawMapConfig.views && typeof rawMapConfig.views === "object"
+      ? rawMapConfig.views
+      : null;
+
+    if (rawViews && !Array.isArray(rawViews)) {
+      for (const [key, rawView] of Object.entries(rawViews)) {
+        const viewKey = String(key || "").trim();
+        if (!viewKey) {
+          continue;
+        }
+        const normalizedView = normalizeMapViewConfig(rawView, fallbackMeta);
+        if (!normalizedView) {
+          continue;
+        }
+        viewsByKey.set(viewKey, normalizedView);
+      }
+    }
+
+    if (!viewsByKey.size) {
+      const singleView = normalizeMapViewConfig(rawMapConfig, fallbackMeta);
+      if (singleView) {
+        viewsByKey.set("root", singleView);
+      }
+    }
+
+    if (!viewsByKey.size) {
+      throw new Error("Map view data is missing.");
+    }
+
+    const preferredDefault = String(rawMapConfig && rawMapConfig.defaultView ? rawMapConfig.defaultView : "root").trim();
+    const defaultViewKey = resolveMapViewKey(preferredDefault, viewsByKey)
+      || resolveMapViewKey("root", viewsByKey)
+      || [...viewsByKey.keys()][0];
+    const requestedView = resolveMapViewKey(requestedMapViewKey, viewsByKey);
+    const initialViewKey = requestedView || defaultViewKey;
+
+    return {
+      viewsByKey,
+      defaultViewKey,
+      initialViewKey
+    };
+  }
+
+  function normalizeMapViewConfig(rawView, fallbackMeta) {
+    if (!rawView || typeof rawView !== "object" || !Array.isArray(rawView.nodes)) {
+      return null;
+    }
+    const edges = Array.isArray(rawView.edges) ? rawView.edges : [];
+    const viewMeta = rawView.meta && typeof rawView.meta === "object"
+      ? rawView.meta
+      : fallbackMeta;
+
+    return {
+      ...rawView,
+      meta: viewMeta,
+      edges
+    };
+  }
+
+  function resolveMapViewKey(value, viewCollection) {
+    const key = String(value || "").trim();
+    if (!key || !viewCollection || !viewCollection.size) {
+      return "";
+    }
+    if (viewCollection.has(key)) {
+      return key;
+    }
+    const lower = key.toLowerCase();
+    for (const candidate of viewCollection.keys()) {
+      if (String(candidate).toLowerCase() === lower) {
+        return candidate;
+      }
+    }
+    return "";
+  }
+
+  function writeViewParam(viewKey) {
+    const resolved = resolveMapViewKey(viewKey, mapViewByKey);
+    if (!resolved) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (resolved === defaultMapViewKey) {
+      url.searchParams.delete("view");
+    } else {
+      url.searchParams.set("view", resolved);
+    }
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
   function resolveMapLayoutSeed(mapConfig) {
     const metaSeed = mapConfig && mapConfig.meta ? Number(mapConfig.meta.layoutSeed) : Number.NaN;
     if (Number.isFinite(metaSeed)) {
       return Math.trunc(metaSeed);
     }
-    return hashStringToSeed(articleKey);
+    const seedSource = mapViewByKey.size > 1
+      ? `${articleKey}:${currentMapViewKey || defaultMapViewKey || "root"}`
+      : articleKey;
+    return hashStringToSeed(seedSource);
   }
 
   function hashStringToSeed(value) {
@@ -1044,7 +1272,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   function restoreHash() {
     const hash = decodeURIComponent(window.location.hash.replace(/^#/, "").trim());
     if (!hash) {
-      const firstSection = sectionEls[0];
+      const firstSection = sectionEls.find((section) => nodeBySectionId.has(section.id)) || sectionEls[0];
       if (firstSection) {
         selectSection(firstSection.id, true);
         syncSelectedNode(firstSection.id, false);
@@ -1058,7 +1286,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       return;
     }
 
-    const fallbackSection = sectionEls[0];
+    const fallbackSection = sectionEls.find((section) => nodeBySectionId.has(section.id)) || sectionEls[0];
     if (fallbackSection) {
       selectSection(fallbackSection.id, true);
       syncSelectedNode(fallbackSection.id, false);
@@ -1726,12 +1954,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function centerGraphOnNodes(nodeIds) {
-    if (!network || !Array.isArray(nodeIds) || !nodeIds.length || mapIsInteracting) {
+    const targetNodeIds = resolveExistingNodeIds(nodeIds);
+    if (!network || !targetNodeIds.length || mapIsInteracting) {
       return;
     }
 
-    if (nodeIds.length === 1) {
-      network.focus(nodeIds[0], {
+    if (targetNodeIds.length === 1) {
+      network.focus(targetNodeIds[0], {
         scale: 1.08,
         animation: { duration: 220, easingFunction: "easeInOutQuad" }
       });
@@ -1739,14 +1968,37 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     }
 
     network.fit({
-      nodes: nodeIds,
+      nodes: targetNodeIds,
       animation: { duration: 240, easingFunction: "easeInOutQuad" }
     });
   }
 
+  function resolveExistingNodeIds(nodeIds) {
+    if (!Array.isArray(nodeIds) || !nodeIds.length) {
+      return [];
+    }
+
+    const resolved = [];
+    const seen = new Set();
+    for (const nodeId of nodeIds) {
+      const node = getNodeData(nodeId);
+      if (!node || node.id === undefined || node.id === null) {
+        continue;
+      }
+      const resolvedId = node.id;
+      const seenKey = typeof resolvedId === "number" ? `n:${resolvedId}` : `s:${resolvedId}`;
+      if (seen.has(seenKey)) {
+        continue;
+      }
+      seen.add(seenKey);
+      resolved.push(resolvedId);
+    }
+    return resolved;
+  }
+
   function setHighlightedPath(edgeIds, nodeIds) {
     highlightedEdgeIds = new Set(Array.isArray(edgeIds) ? edgeIds : []);
-    highlightedNodeIds = new Set(Array.isArray(nodeIds) ? nodeIds : []);
+    highlightedNodeIds = new Set(resolveExistingNodeIds(nodeIds));
     if (network) {
       network.redraw();
     }
@@ -2172,9 +2424,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function initMapImpulseTracking() {
-    if (!mapContainer) {
+    if (!mapContainer || mapImpulseTrackingInstalled) {
       return;
     }
+    mapImpulseTrackingInstalled = true;
 
     mapContainer.addEventListener("pointerdown", (event) => {
       lastPointerX = event.clientX;

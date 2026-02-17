@@ -340,6 +340,13 @@ export function initBackgroundFx({
     }
   }
 
+  function syncFxCursorHintState() {
+    if (!document.body) {
+      return;
+    }
+    document.body.classList.toggle("fx-click-hint", miniModeActive || secretZoneActive);
+  }
+
   function isPointInsideElement(clientX, clientY, el) {
     if (!el) {
       return false;
@@ -1035,6 +1042,7 @@ export function initBackgroundFx({
     secretZoneActive = isPointInsideElement(ev.clientX, ev.clientY, secretVideoBlock);
     const nextMiniMode = isMiniGameArea(ev.clientX, ev.clientY, target);
     setMiniModeActive(nextMiniMode);
+    syncFxCursorHintState();
   }
 
   function onPointerDown(ev) {
@@ -1071,6 +1079,7 @@ export function initBackgroundFx({
     endWordSession();
     setMiniModeActive(false);
     setWordsActive(false);
+    syncFxCursorHintState();
   }
 
   window.addEventListener("resize", resizeCanvas);
