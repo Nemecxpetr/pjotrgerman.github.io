@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "title": "Perfo Map",
+    "subtitle": "Emotional overload score map",
+    "author": "Petr Nemec",
+    "updated": "2026-02-16"
+  },
+  "defaultView": "root",
+  "views": {
+    "root": {
+      "nodes": [
+        { "id": "start", "label": "Koncept", "section": "start", "size": 22, "importance": 1 },
+        { "id": "entities-entry", "label": "Entity", "section": "entities", "openView": "entities", "size": 20, "importance": 1, "shape": "diamond" },
+        { "id": "timeline-entry", "label": "Časová osa", "section": "timeline", "openView": "timeline", "size": 20, "importance": 1, "shape": "diamond" },
+        { "id": "semantic-entry", "label": "Sémantické párování", "section": "semantic", "openView": "semantic", "size": 19, "importance": 2, "shape": "diamond" },
+        { "id": "sound-entry", "label": "Zvuková vrstva", "section": "sound", "openView": "sound", "size": 19, "importance": 2, "shape": "diamond" }
+      ],
+      "edges": [
+        { "from": "start", "to": "entities-entry" },
+        { "from": "start", "to": "timeline-entry" },
+        { "from": "start", "to": "semantic-entry" },
+        { "from": "start", "to": "sound-entry" }
+      ]
+    },
+    "entities": {
+      "nodes": [
+        { "id": "entity-fragile", "label": "Entita Křehkost", "section": "entity-fragile", "size": 19, "importance": 2 },
+        { "id": "entity-heat", "label": "Entita Žár", "section": "entity-heat", "size": 19, "importance": 2 },
+        { "id": "entity-static", "label": "Entita Statika", "section": "entity-static", "size": 19, "importance": 2 },
+        { "id": "entity-transfer", "label": "Přenos oblečení", "section": "entity-transfer", "size": 18, "importance": 1 },
+        { "id": "back-root", "label": "Zpět na hlavní mapu", "section": "start", "openView": "root", "size": 16, "importance": 4, "shape": "box" }
+      ],
+      "edges": [
+        { "from": "entity-fragile", "to": "entity-heat" },
+        { "from": "entity-heat", "to": "entity-static" },
+        { "from": "entity-static", "to": "entity-fragile" },
+        { "from": "entity-transfer", "to": "back-root" }
+      ]
+    },
+    "timeline": {
+      "nodes": [
+        { "id": "timeline-hub", "label": "Časový oblouk", "section": "timeline", "size": 21, "importance": 1 },
+        { "id": "phase-wake", "label": "Probuzení", "section": "phase-wake", "size": 18, "importance": 1 },
+        { "id": "phase-layer-1", "label": "Vrstva 1", "section": "phase-layer-1", "size": 18, "importance": 2 },
+        { "id": "phase-layer-2", "label": "Vrstva 2", "section": "phase-layer-2", "size": 18, "importance": 2 },
+        { "id": "phase-overload", "label": "Přetížení", "section": "phase-overload", "size": 20, "importance": 1 },
+        { "id": "phase-release", "label": "Uvolnění", "section": "phase-release", "size": 18, "importance": 3 },
+        { "id": "back-root", "label": "Zpět na hlavní mapu", "section": "start", "openView": "root", "size": 16, "importance": 4, "shape": "box" }
+      ],
+      "edges": [
+        { "from": "timeline-hub", "to": "phase-wake" },
+        { "from": "phase-wake", "to": "phase-layer-1" },
+        { "from": "phase-layer-1", "to": "phase-layer-2" },
+        { "from": "phase-layer-2", "to": "phase-overload" },
+        { "from": "phase-overload", "to": "phase-release" },
+        { "from": "timeline-hub", "to": "back-root" }
+      ]
+    },
+    "semantic": {
+      "nodes": [
+        { "id": "semantic-hub", "label": "Sémantické párování", "section": "semantic", "size": 21, "importance": 1 },
+        { "id": "pairing-shape", "label": "Tvary", "section": "pairing-shape", "size": 18, "importance": 1 },
+        { "id": "pairing-color", "label": "Barvy", "section": "pairing-color", "size": 18, "importance": 1 },
+        { "id": "pairing-structure", "label": "Struktury", "section": "pairing-structure", "size": 18, "importance": 2 },
+        { "id": "pairing-movement", "label": "Pohyb", "section": "pairing-movement", "size": 18, "importance": 2 },
+        { "id": "pairing-temperature", "label": "Teplota", "section": "pairing-temperature", "size": 18, "importance": 3 },
+        { "id": "back-root", "label": "Zpět na hlavní mapu", "section": "start", "openView": "root", "size": 16, "importance": 4, "shape": "box" }
+      ],
+      "edges": [
+        { "from": "semantic-hub", "to": "pairing-shape" },
+        { "from": "semantic-hub", "to": "pairing-color" },
+        { "from": "semantic-hub", "to": "pairing-structure" },
+        { "from": "semantic-hub", "to": "pairing-movement" },
+        { "from": "semantic-hub", "to": "pairing-temperature" },
+        { "from": "semantic-hub", "to": "back-root" }
+      ]
+    },
+    "sound": {
+      "nodes": [
+        { "id": "sound-hub", "label": "Zvuková strategie", "section": "sound", "size": 21, "importance": 1 },
+        { "id": "sound-density", "label": "Hustota", "section": "sound-density", "size": 18, "importance": 1 },
+        { "id": "sound-register", "label": "Rejstřík", "section": "sound-register", "size": 18, "importance": 2 },
+        { "id": "sound-texture", "label": "Textura", "section": "sound-texture", "size": 18, "importance": 2 },
+        { "id": "sound-gesture", "label": "Gesto", "section": "sound-gesture", "size": 18, "importance": 2 },
+        { "id": "sound-threshold", "label": "Práh ticha", "section": "sound-threshold", "size": 19, "importance": 1 },
+        { "id": "back-root", "label": "Zpět na hlavní mapu", "section": "start", "openView": "root", "size": 16, "importance": 4, "shape": "box" }
+      ],
+      "edges": [
+        { "from": "sound-hub", "to": "sound-density" },
+        { "from": "sound-hub", "to": "sound-register" },
+        { "from": "sound-hub", "to": "sound-texture" },
+        { "from": "sound-hub", "to": "sound-gesture" },
+        { "from": "sound-hub", "to": "sound-threshold" },
+        { "from": "sound-hub", "to": "back-root" }
+      ]
+    }
+  }
+}
