@@ -38,9 +38,9 @@ function getReleaseYear(item) {
     return null;
   }
   if (typeof item.date === "string") {
-    const year = Number(item.date.slice(0, 4));
-    if (Number.isFinite(year)) {
-      return year;
+    const dateParts = parseIsoDateParts(item.date);
+    if (dateParts) {
+      return dateParts.year;
     }
   }
   if (typeof item.dateLabel === "string") {
@@ -137,20 +137,41 @@ function formatDateFromIso(iso) {
   return `${String(day).padStart(2, "0")} ${monthName} ${year}`;
 }
 
-function toDateValue(iso) {
+function parseIsoDateParts(iso) {
   if (typeof iso !== "string") {
-    return 0;
+    return null;
   }
-  const parts = iso.split("-");
-  if (parts.length !== 3) {
-    return 0;
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
   }
-  const year = Number(parts[0]);
-  const month = Number(parts[1]);
-  const day = Number(parts[2]);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
   if (!year || !month || !day) {
+    return null;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  const utcValue = Date.UTC(year, month - 1, day);
+  const parsedDate = new Date(utcValue);
+  if (
+    parsedDate.getUTCFullYear() !== year
+    || parsedDate.getUTCMonth() !== month - 1
+    || parsedDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
+}
+
+function toDateValue(iso) {
+  const dateParts = parseIsoDateParts(iso);
+  if (!dateParts) {
     return 0;
   }
+  const { year, month, day } = dateParts;
   return Date.UTC(year, month - 1, day);
 }
 

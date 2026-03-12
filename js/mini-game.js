@@ -13,7 +13,6 @@ import { lerp } from "./math-utils.js";
  * @param {{
  *   canvasId?: string,
  *   maskImgId?: string,
- *   wrapSelector?: string,
  *   playPluck?: (size:number, sizeRange:{min:number,max:number}) => void,
  *   unlockAudioContext?: () => void
  * }} options
@@ -21,7 +20,6 @@ import { lerp } from "./math-utils.js";
 export function initMiniGame({
   canvasId = "mini-game-canvas",
   maskImgId = "maskImg",
-  wrapSelector = ".wrap",
   playPluck = () => {},
   unlockAudioContext = () => {}
 } = {}) {
@@ -36,7 +34,6 @@ export function initMiniGame({
   }
 
   const maskImg = document.getElementById(maskImgId);
-  const contentWrap = document.querySelector(wrapSelector);
 
   /**
    * Main tuning block for game feel.
@@ -70,7 +67,7 @@ export function initMiniGame({
   let lastEmitX = 0;
   let lastEmitY = 0;
   let lastMoveAt = performance.now();
-  let miniGameActive = false;
+  let miniGameActive = true;
   let maskData = null;
   let maskW = 0;
   let maskH = 0;
@@ -193,14 +190,6 @@ export function initMiniGame({
     return { isDarkLine, strength };
   }
 
-  function isMiniGameActive() {
-    // Check if cursor is over non-text content area
-    if (!contentWrap) {
-      return true;
-    }
-    return !contentWrap.contains(document.activeElement);
-  }
-
   function createSoundPattern(traceLength) {
     // Pattern duration based on trace length
     // Longer trace = slower repetition rate
@@ -255,7 +244,7 @@ export function initMiniGame({
   function beginDrawing(ev) {
     const isMouse = ev.pointerType === "mouse";
     const isLeftButton = !isMouse || ev.button === 0;
-    if (!isLeftButton || !miniGameActive) {
+    if (!isLeftButton) {
       return;
     }
 
@@ -465,14 +454,8 @@ export function initMiniGame({
   }
 
   function updateMiniGameActive(ev) {
-    // Check if pointer is outside content wrap (text areas)
-    if (!contentWrap) {
-      miniGameActive = true;
-      return;
-    }
-    
     const target = document.elementFromPoint(ev.clientX, ev.clientY);
-    miniGameActive = !contentWrap.contains(target);
+    miniGameActive = Boolean(target && (target === miniGameCanvas || miniGameCanvas.contains(target)));
   }
 
   miniGameCanvas.addEventListener("pointerdown", beginDrawing, { passive: false });

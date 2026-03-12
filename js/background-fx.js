@@ -72,6 +72,18 @@ export function initBackgroundFx({
   let secretShapesCompleted = 0;
   let secretUnlocked = false;
   let leftMouseHeld = false;
+  const coarsePointerQuery = typeof window.matchMedia === "function"
+    ? window.matchMedia("(hover: none) and (pointer: coarse)")
+    : null;
+  let isCoarsePointer = Boolean(coarsePointerQuery && coarsePointerQuery.matches);
+  let coarseStrokeActive = false;
+  let coarseTapStart = null;
+  let lastCoarseTapAt = -Infinity;
+  let lastCoarseTapX = 0;
+  let lastCoarseTapY = 0;
+  let coarseCaptureEl = null;
+  let touchScrollLockActive = false;
+  let previousBodyTouchAction = "";
   let lastAccentX = null;
   let lastAccentY = null;
   let lastAccentEmitAt = -Infinity;
@@ -117,6 +129,11 @@ export function initBackgroundFx({
     secretGoalShapes: 3,
     secretTargetLengthPx: 220,
     secretLengthTolerancePx: 60,
+    coarseTapMoveTolerancePx: 16,
+    coarseTapMaxDurationMs: 420,
+    coarseDoubleTapWindowMs: 360,
+    coarseDoubleTapDistancePx: 48,
+    coarseTraceSampleSpacingPx: 2,
     maxConnectionTriggersPerTick: 2,
     resumeGapMs: 800
   };
@@ -137,6 +154,69 @@ export function initBackgroundFx({
     const dx = ax - bx;
     const dy = ay - by;
     return dx * dx + dy * dy;
+  }
+
+  function isMobileStrokeInput(ev) {
+    if (isCoarsePointer || ev.pointerType === "touch") {
+      return true;
+    }
+
+    // Support browser touch emulators that still report pointerType="mouse".
+    if (ev.pointerType === "mouse") {
+      const smallViewport = window.innerWidth <= 920;
+      const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+      const firesTouchEvents = Boolean(ev.sourceCapabilities && ev.sourceCapabilities.firesTouchEvents);
+      if (firesTouchEvents) {
+        return true;
+      }
+      const emulatedTouchEnv = typeof window.matchMedia === "function"
+        && (window.matchMedia("(hover: none)").matches || window.matchMedia("(any-hover: none)").matches || window.matchMedia("(any-pointer: coarse)").matches);
+      if (smallViewport && (touchCapable || emulatedTouchEnv)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function isInteractiveTarget(target) {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+    if (target.closest(".sound-toggle")) {
+      return true;
+    }
+    return Boolean(
+      target.closest("a, button, input, textarea, select, option, iframe, audio, video, summary, details")
+    );
+  }
+
+  function buildAnchorAt(x, y, ts, isSecretZone = false) {
+    const accentInfo = sampleMaskAt(x, y);
+    const size = settings.baseDotSize + settings.accentMaxExtraSize * accentInfo.strength;
+    return {
+      x,
+      y,
+      size,
+      generatedAt: ts,
+      isSecretZone,
+      isWord: false,
+      word: null
+    };
+  }
+
+  function setTouchScrollLock(locked) {
+    if (!document.body || touchScrollLockActive === locked) {
+      return;
+    }
+    if (locked) {
+      previousBodyTouchAction = document.body.style.touchAction || "";
+      document.body.style.touchAction = "none";
+      touchScrollLockActive = true;
+      return;
+    }
+    document.body.style.touchAction = previousBodyTouchAction;
+    touchScrollLockActive = false;
   }
 
   function updateWordFont() {
@@ -606,15 +686,15 @@ export function initBackgroundFx({
     }
   }
 
-  function appendPendingTracePoint(x, y, ts) {
-    if (!(miniModeActive || secretZoneActive) || !pairStartAnchor) {
+  function appendPendingTracePoint(x, y, ts, force = false, spacingPx = settings.traceSampleSpacing) {
+    if ((!force && !(miniModeActive || secretZoneActive)) || !pairStartAnchor) {
       return;
     }
     if (pendingTrace.length === 0) {
       pendingTrace.push({ x: pairStartAnchor.x, y: pairStartAnchor.y, generatedAt: ts, size: settings.baseDotSize });
     }
     const lastPoint = pendingTrace[pendingTrace.length - 1];
-    const minSpacingSq = settings.traceSampleSpacing * settings.traceSampleSpacing;
+    const minSpacingSq = spacingPx * spacingPx;
     if (distSq(x, y, lastPoint.x, lastPoint.y) >= minSpacingSq) {
       pendingTrace.push({ x, y, generatedAt: ts, size: settings.baseDotSize });
     }
@@ -948,7 +1028,7 @@ export function initBackgroundFx({
   function tick(ts) {
     pointer.x += (pointer.targetX - pointer.x) * settings.smoothness;
     pointer.y += (pointer.targetY - pointer.y) * settings.smoothness;
-    if (!gameStopped) {
+    if (!gameStopped && !coarseStrokeActive) {
       appendPendingTracePoint(pointer.x, pointer.y, ts);
     }
 
@@ -971,6 +1051,7 @@ export function initBackgroundFx({
       const accentCooldownReady = ts - lastAccentEmitAt >= settings.accentCooldownMs;
       const hasAccentGap = lastAccentX === null || distSq(pointer.x, pointer.y, lastAccentX, lastAccentY) >= accentSpacingSq;
       const canCreateShape = miniModeActive || secretZoneActive;
+      const allowAccentShape = canCreateShape && !coarseStrokeActive;
 
       if (accentInfo.hit && hasAccentGap && accentCooldownReady) {
         if (wordsActive) {
@@ -994,7 +1075,7 @@ export function initBackgroundFx({
               max: settings.baseDotSize + settings.accentMaxExtraSize
             });
           }
-          if (canCreateShape) {
+          if (allowAccentShape) {
             registerBlueDot(pointer.x, pointer.y, accentSize, ts, secretZoneActive);
           }
           lastAccentX = pointer.x;
@@ -1043,16 +1124,91 @@ export function initBackgroundFx({
     const nextMiniMode = isMiniGameArea(ev.clientX, ev.clientY, target);
     setMiniModeActive(nextMiniMode);
     syncFxCursorHintState();
+
+    if (
+      isMobileStrokeInput(ev)
+      && coarseTapStart
+      && ev.pointerId === coarseTapStart.pointerId
+      && !coarseTapStart.moved
+    ) {
+      const moveToleranceSq = settings.coarseTapMoveTolerancePx * settings.coarseTapMoveTolerancePx;
+      if (distSq(ev.clientX, ev.clientY, coarseTapStart.startX, coarseTapStart.startY) > moveToleranceSq) {
+        coarseTapStart.moved = true;
+      }
+    }
+
+    if (coarseStrokeActive && coarseTapStart && ev.pointerId === coarseTapStart.pointerId) {
+      // On touch/mobile input, capture the raw finger path to avoid straight-line simplification.
+      const samples = typeof ev.getCoalescedEvents === "function"
+        ? ev.getCoalescedEvents()
+        : null;
+      const points = samples && samples.length ? samples : [ev];
+      for (let i = 0; i < points.length; i += 1) {
+        const point = points[i];
+        pointer.x = point.clientX;
+        pointer.y = point.clientY;
+        pointer.targetX = point.clientX;
+        pointer.targetY = point.clientY;
+        appendPendingTracePoint(
+          point.clientX,
+          point.clientY,
+          now,
+          true,
+          settings.coarseTraceSampleSpacingPx
+        );
+      }
+      ev.preventDefault();
+    }
   }
 
   function onPointerDown(ev) {
+    const now = performance.now();
     const isMouse = ev.pointerType === "mouse";
     const isLeft = !isMouse || ev.button === 0;
     if (isLeft) {
       leftMouseHeld = true;
     }
     onPointerMove(ev);
-    const allowWords = isLeft && miniModeActive && !gameStopped;
+    if (isMobileStrokeInput(ev) && isLeft) {
+      const downTarget = ev.target instanceof Element
+        ? ev.target
+        : document.elementFromPoint(ev.clientX, ev.clientY);
+      const downInSecretZone = isPointInsideElement(ev.clientX, ev.clientY, secretVideoBlock);
+      const inFxZone = downInSecretZone || (
+        ev.clientY < h - settings.bottomDeadZonePx
+        && !isInteractiveTarget(downTarget)
+      );
+      coarseTapStart = {
+        pointerId: ev.pointerId,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        startedAt: now,
+        inFxZone,
+        moved: false
+      };
+      coarseStrokeActive = false;
+
+      if (inFxZone && !gameStopped) {
+        pairStartAnchor = null;
+        pendingTrace = [];
+        setMiniModeActive(true);
+        registerPairAnchor(buildAnchorAt(ev.clientX, ev.clientY, now, downInSecretZone), now);
+        coarseStrokeActive = true;
+        const captureTarget = ev.target instanceof Element ? ev.target : canvas;
+        if (captureTarget && typeof captureTarget.setPointerCapture === "function") {
+          try {
+            captureTarget.setPointerCapture(ev.pointerId);
+            coarseCaptureEl = captureTarget;
+          } catch {
+            coarseCaptureEl = null;
+          }
+        }
+        setTouchScrollLock(true);
+        ev.preventDefault();
+      }
+    }
+
+    const allowWords = isLeft && miniModeActive && !gameStopped && !isMobileStrokeInput(ev);
     if (allowWords) {
       startWordSession();
     }
@@ -1063,8 +1219,58 @@ export function initBackgroundFx({
   }
 
   function onPointerUp(ev) {
+    const now = performance.now();
     const isMouse = ev.pointerType === "mouse";
     const isLeft = !isMouse || ev.button === 0;
+
+    if (isMobileStrokeInput(ev) && isLeft && coarseTapStart && ev.pointerId === coarseTapStart.pointerId) {
+      const tapDurationMs = now - coarseTapStart.startedAt;
+      const moveToleranceSq = settings.coarseTapMoveTolerancePx * settings.coarseTapMoveTolerancePx;
+      const travelSq = distSq(ev.clientX, ev.clientY, coarseTapStart.startX, coarseTapStart.startY);
+      const moved = coarseTapStart.moved || travelSq > moveToleranceSq;
+      const isTap = !moved && tapDurationMs <= settings.coarseTapMaxDurationMs && coarseTapStart.inFxZone;
+      const doubleTapDistanceSq = settings.coarseDoubleTapDistancePx * settings.coarseDoubleTapDistancePx;
+      const isDoubleTap = isTap
+        && now - lastCoarseTapAt <= settings.coarseDoubleTapWindowMs
+        && distSq(ev.clientX, ev.clientY, lastCoarseTapX, lastCoarseTapY) <= doubleTapDistanceSq;
+
+      if (isDoubleTap) {
+        clearAllGameVisuals();
+        lastCoarseTapAt = -Infinity;
+      } else {
+        if (coarseStrokeActive && !gameStopped) {
+          const endInSecretZone = isPointInsideElement(ev.clientX, ev.clientY, secretVideoBlock);
+          registerPairAnchor(buildAnchorAt(ev.clientX, ev.clientY, now, endInSecretZone), now);
+        }
+        if (isTap) {
+          lastCoarseTapAt = now;
+          lastCoarseTapX = ev.clientX;
+          lastCoarseTapY = ev.clientY;
+        } else {
+          lastCoarseTapAt = -Infinity;
+        }
+      }
+
+      coarseStrokeActive = false;
+      coarseTapStart = null;
+      if (
+        coarseCaptureEl
+        && typeof coarseCaptureEl.releasePointerCapture === "function"
+        && typeof coarseCaptureEl.hasPointerCapture === "function"
+      ) {
+        try {
+          if (coarseCaptureEl.hasPointerCapture(ev.pointerId)) {
+            coarseCaptureEl.releasePointerCapture(ev.pointerId);
+          }
+        } catch {
+          // Ignore capture release failures.
+        }
+      }
+      coarseCaptureEl = null;
+      setTouchScrollLock(false);
+      ev.preventDefault();
+    }
+
     if (isLeft) {
       leftMouseHeld = false;
       endWordSession();
@@ -1072,10 +1278,18 @@ export function initBackgroundFx({
     }
   }
 
-  function onPointerLeave() {
+  function onPointerLeave(ev) {
+    const forced = ev?.type === "blur";
+    if (coarseStrokeActive && !forced) {
+      return;
+    }
     pointer.active = false;
     secretZoneActive = false;
     leftMouseHeld = false;
+    coarseStrokeActive = false;
+    coarseTapStart = null;
+    coarseCaptureEl = null;
+    setTouchScrollLock(false);
     endWordSession();
     setMiniModeActive(false);
     setWordsActive(false);
@@ -1083,12 +1297,23 @@ export function initBackgroundFx({
   }
 
   window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("pointermove", onPointerMove, { passive: true });
+  window.addEventListener("pointerrawupdate", onPointerMove, { passive: false });
+  window.addEventListener("pointermove", onPointerMove, { passive: false });
   window.addEventListener("pointerdown", onPointerDown, { passive: false });
-  window.addEventListener("pointerup", onPointerUp, { passive: true });
-  window.addEventListener("pointercancel", onPointerUp, { passive: true });
+  window.addEventListener("pointerup", onPointerUp, { passive: false });
+  window.addEventListener("pointercancel", onPointerUp, { passive: false });
   window.addEventListener("pointerleave", onPointerLeave);
   window.addEventListener("blur", onPointerLeave);
+  if (coarsePointerQuery && typeof coarsePointerQuery.addEventListener === "function") {
+    coarsePointerQuery.addEventListener("change", (event) => {
+      isCoarsePointer = Boolean(event.matches);
+      coarseStrokeActive = false;
+      coarseTapStart = null;
+      lastCoarseTapAt = -Infinity;
+      coarseCaptureEl = null;
+      setTouchScrollLock(false);
+    });
+  }
 
   if (maskImg) {
     if (maskImg.complete) {

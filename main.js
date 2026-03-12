@@ -29,10 +29,6 @@ function initSoundToggle() {
   if (document.body?.dataset.soundToggle === "off") {
     return;
   }
-  if (shouldSuppressSoundToggleOnMobile()) {
-    setAudioEnabled(false);
-    return;
-  }
 
   const toggle = document.createElement("button");
   toggle.type = "button";
@@ -83,15 +79,6 @@ function initSoundToggle() {
     window.visualViewport.addEventListener("resize", positionToggle, { passive: true });
     window.visualViewport.addEventListener("scroll", positionToggle, { passive: true });
   }
-}
-
-function shouldSuppressSoundToggleOnMobile() {
-  if (typeof window.matchMedia !== "function") {
-    return false;
-  }
-  const smallViewport = window.matchMedia("(max-width: 720px)").matches;
-  const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-  return smallViewport && coarsePointer;
 }
 
 function getBackgroundFxOptions() {

@@ -1,10 +1,20 @@
 [
   {
+    "date": "2026-04-09",
+    "dateLabel": "9 Apr 2026",
+    "event": "Multicreations HF JAMU",
+    "work": "Chillcouch",
+    "workItalic": true,
+    "role": "sound installation"
+  },
+  {
     "date": "2026-07-10",
-    "dateLabel": "10 Jul 2026",
+    "dateLabel": "10–12 Jul 2026",
     "event": "Festival VIVAT VILA VI.",
     "dateEnd": "2026-07-12",
     "place": "Vila Prachatice",
+    "role": "sonic intervetion into river",
+    "work": null,
     "placeUrl": "https://mapy.com/en/zakladni?q=N%C3%A1dra%C5%BEn%C3%AD%20364%2C%2038301%20Prachatice%2C%20Czech%20Republic",
     "links": [
       { 
@@ -14,7 +24,11 @@
     ]
   },
   {
-    "date":"2026-07-"
+    "date":"2026-07-03",
+    "dateLabel": "3–5 Jul 2026",
+    "dateEnd": "2026-07-05",
+    "event": "? 48 hours neukoln",
+    "place": "Neukoln, Germany"
   },
   {
     "date": "2026-04-11",
@@ -28,11 +42,11 @@
     "date": "2026-04-06", 
     "dateLabel": "6 Apr 2026",
     "event": "Y:Haunted Realities II. (X-Ray)",
-    "work": null,
+    "work": "bridge of love 25",
     "role": "video installation / sound design",
     "place": "Divadlo X10 - Praha", 
     "notes": "collaboration with Ay Lak Yakubouskaya & Shu Chon",
-    "link": [
+    "links": [
       { "label": "Event web", "url": "https://www.divadlox10.cz/cs/y-events/y-haunted-realities-ii-x-ray" }
     ]
   },
@@ -168,7 +182,7 @@
     "place": "Berlin (various)",
     "notes": "w/ Ana",
     "links": [
-      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
     ]
   },
   {
@@ -180,7 +194,7 @@
     "place": "Berlin (various)",
     "notes": "w/ Alesya (Aliaksandra)",
     "links": [
-      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
     ]
   },
   {
@@ -192,7 +206,7 @@
     "role": "live set",
     "place": "Dresden",
     "links": [
-      { "label": "Oiioiooi", "url": "https://oiioiooi.xyz" }
+      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
     ]
   },
   {

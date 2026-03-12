@@ -230,12 +230,6 @@ body.fx-click-hint .wrap {
   outline-offset: 2px;
 }
 
-@media (max-width: 720px) and (hover: none) and (pointer: coarse) {
-  .sound-toggle {
-    display: none !important;
-  }
-}
-
 .section {
   display: flex;
   flex-direction: column;
