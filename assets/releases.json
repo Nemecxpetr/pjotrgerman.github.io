@@ -1,5 +1,53 @@
 [
   {
+    "date": "2026-07-10",
+    "dateLabel": "10 Jul 2026",
+    "event": "Festival VIVAT VILA VI.",
+    "dateEnd": "2026-07-12",
+    "place": "Vila Prachatice",
+    "placeUrl": "https://mapy.com/en/zakladni?q=N%C3%A1dra%C5%BEn%C3%AD%20364%2C%2038301%20Prachatice%2C%20Czech%20Republic",
+    "links": [
+      { 
+        "label": "FB Event", 
+        "url": "https://fb.me/e/1RICQVZsSc" 
+      }
+    ]
+  },
+  {
+    "date":"2026-07-"
+  },
+  {
+    "date": "2026-04-11",
+    "dateLabel": "11 Apr 2026",
+    "place": "skatepark hall in Kroměříž",
+    "event": "DIY event",
+    "work": null,
+    "role": "sound performance"
+  },
+  {
+    "date": "2026-04-06", 
+    "dateLabel": "6 Apr 2026",
+    "event": "Y:Haunted Realities II. (X-Ray)",
+    "work": null,
+    "role": "video installation / sound design",
+    "place": "Divadlo X10 - Praha", 
+    "notes": "collaboration with Ay Lak Yakubouskaya & Shu Chon",
+    "link": [
+      { "label": "Event web", "url": "https://www.divadlox10.cz/cs/y-events/y-haunted-realities-ii-x-ray" }
+    ]
+  },
+  {
+    "date": "2026-03-14",
+    "dateLabel": "14 Mar 2026",
+    "event": "From clouds to fog",
+    "role": "sonic intervention with Sára Bočková (poems)",
+    "place": "nemezis galerie Velké Meziříčí",
+    "notes": "program for the exhibition opening of Jana Zikuška",
+    "links": [
+      { "label": "IG Poster", "url": "https://www.instagram.com/p/DVwVY7bircS/" }
+    ]
+  },
+  {
     "date": "2026-01-31",
     "dateLabel": "31 Jan 2026",
     "event": "Nanofestival",

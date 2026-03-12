@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 
-<body>
+<body data-release-page="true">
   <div class="mask-layer" aria-hidden="true">
     <img id="maskImg" class="mask-img" src="assets/background.jpg" alt="" decoding="async" />
   </div>
@@ -28,8 +28,28 @@
     </header>
 
     <section class="section" id="releases-list">
-      <h2>All Releases</h2>
-      <div class="release-list" id="all-releases"></div>
+      <h2>Releases</h2>
+
+      <div class="release-mode-control" id="release-mode-control" data-mode="past">
+        <div class="release-mode-labels" aria-hidden="true">
+          <span class="release-mode-label" data-mode-label="past">Past</span>
+          <span class="release-mode-label" data-mode-label="upcoming">Upcoming</span>
+        </div>
+        <input
+          class="release-mode-slider"
+          id="release-mode-slider"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value="0"
+          aria-label="Toggle past and upcoming releases" />
+      </div>
+
+      <div class="release-mode-stage" id="release-mode-stage">
+        <div class="release-list release-panel is-active" id="past-releases" data-release-mode="past"></div>
+        <div class="release-list release-panel" id="upcoming-releases-full" data-release-mode="upcoming"></div>
+      </div>
     </section>
 
     <footer class="footer">
