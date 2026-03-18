@@ -1,4 +1,4 @@
-import { playPluck, playSineTone } from "../js/audio-pluck.js";
+import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
 
 (function () {
   const DEFAULT_ARTICLE = "czech-scene-sound";
@@ -22,6 +22,19 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const PREVIEW_SOURCE_TEXT = "text";
   const STICKY_PREVIEW_UNTIL_PRIMARY_CLICK = true;
   const PRINT_SOURCE_URL = "https://nemecxpetr.github.io/pjotrgerman.github.io/articles/";
+  const SAMPLE_GAIN = 0.28;
+  const SAMPLE_ATTACK_SEC = 0.02;
+  const SAMPLE_FADE_SEC = 1.63;
+  const SAMPLE_RATE_MIN = 0.94;
+  const SAMPLE_RATE_MAX = 1.14;
+  const SAMPLE_RATE_SPEED_SCALE = 0.085;
+  const MORPH_GRAIN_INTERVAL_MS = 132;
+  const MORPH_GRAIN_DURATION_SEC = 0.24;
+  const MORPH_GRAIN_JITTER_SEC = 0.22;
+  const MORPH_FADE_SEC = 0.24;
+  const MORPH_SPREAD_CENTS = 48;
+  const PLANE_MORPH_NEIGHBOR_COUNT = 3;
+  const PLANE_MORPH_DISTANCE_FALLOFF = 1.35;
   const activeClass = "active";
   const pageBaseUrl = getPageBaseUrl();
   const searchParams = new URLSearchParams(window.location.search);
@@ -33,8 +46,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   const subtitleEl = document.getElementById("article-subtitle");
   const desktopTitleEl = document.getElementById("article-title-desktop");
   const desktopSubtitleEl = document.getElementById("article-subtitle-desktop");
+  const eyebrowEls = [...document.querySelectorAll(".map-pane .eyebrow, .desktop-page-header .eyebrow")];
   const essayLayout = document.querySelector(".essay-layout");
   const mapPane = document.querySelector(".map-pane");
+  const mapHelpEl = document.querySelector(".map-help");
   const paneResizer = document.getElementById("pane-resizer");
   const columnResizer = document.getElementById("column-resizer");
   const articlePane = document.getElementById("article-pane");
@@ -51,6 +66,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let defaultMapViewKey = "root";
   let currentMapViewKey = "";
   let mapImpulseTrackingInstalled = false;
+  let mapPlaneMorphControlsInstalled = false;
   let nodesDataSet = null;
   let sectionByNodeId = new Map();
   let nodeBySectionId = new Map();
@@ -100,7 +116,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   let contextPreviewPageIndex = 0;
   let printFitLoopTimerId = null;
   let printMediaQueryList = null;
+  let articleMeta = {};
+  let articleModeClass = "";
   let theme = readThemeValues();
+  const soundHoverRuntime = createSoundHoverRuntime();
 
   init().catch((error) => {
     articleContent.innerHTML = `<p class="error">Failed to load "${articleKey}". ${escapeHtml(error.message)}</p>`;
@@ -111,6 +130,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       readJson(resolvePagePath(`content/${articleKey}.map.json`)),
       readText(resolvePagePath(`content/${articleKey}.html`))
     ]);
+    articleMeta = rawMapConfig.meta || {};
     const mapViews = resolveMapViews(rawMapConfig);
     mapViewByKey = mapViews.viewsByKey;
     defaultMapViewKey = mapViews.defaultViewKey;
@@ -121,14 +141,15 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       throw new Error(`Map view "${currentMapViewKey}" is not available.`);
     }
 
-    renderMeta(rawMapConfig.meta || {});
     articleContent.innerHTML = articleHtml;
     hydrateThreadPlaceholders();
+    renderMeta(articleMeta);
 
     sectionEls = [...articleContent.querySelectorAll("section[id]")];
     sectionEls.forEach((section) => {
       section.classList.add("article-section");
     });
+    articleContent.dataset.pageType = String(articleMeta.pageType || "").trim();
 
     initContextPreview();
     initMobileMapScrollLock();
@@ -136,6 +157,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     initColumnResizer();
     initContextShiftSystem();
     installMap(initialMapConfig);
+    initSoundPlaneMorphControl();
     writeViewParam(currentMapViewKey);
     installTextPathHover();
     installThreadLinks();
@@ -182,6 +204,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   function renderMeta(meta) {
     const resolvedTitle = meta.title || "Untitled Listening Notes";
     const resolvedSubtitle = [meta.subtitle, meta.author, meta.updated].filter(Boolean).join(" / ");
+    const resolvedEyebrow = meta.eyebrow || "Unlisted Essay";
+    const sourceUrl = new URL(PRINT_SOURCE_URL);
+    sourceUrl.searchParams.set("article", articleKey);
     titleEl.textContent = resolvedTitle;
     subtitleEl.textContent = resolvedSubtitle;
     if (desktopTitleEl) {
@@ -190,6 +215,13 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (desktopSubtitleEl) {
       desktopSubtitleEl.textContent = resolvedSubtitle;
     }
+    for (const eyebrowEl of eyebrowEls) {
+      eyebrowEl.textContent = resolvedEyebrow;
+    }
+    if (mapHelpEl && meta.mapHelp) {
+      mapHelpEl.textContent = String(meta.mapHelp);
+    }
+    applyArticleMode(meta.pageType || "");
 
     const existingMeta = articleContent.querySelector(".article-meta");
     if (existingMeta) {
@@ -199,13 +231,43 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     const metaBlock = document.createElement("div");
     metaBlock.className = "article-meta";
     metaBlock.innerHTML = `
-      <p>Article: ${escapeHtml(titleEl.textContent)}</p>
+      <p>${escapeHtml(resolvedEyebrow)}: ${escapeHtml(titleEl.textContent)}</p>
       <p class="print-source-link">
         Read online:
-        <a href="${escapeHtml(PRINT_SOURCE_URL)}">${escapeHtml(PRINT_SOURCE_URL)}</a>
+        <a href="${escapeHtml(sourceUrl.toString())}">${escapeHtml(sourceUrl.toString())}</a>
       </p>
     `;
     articleContent.prepend(metaBlock);
+    renderArticleIntroMedia(meta);
+  }
+
+  function renderArticleIntroMedia(meta) {
+    const existingIntroMedia = articleContent.querySelector(".article-comparison");
+    if (existingIntroMedia) {
+      existingIntroMedia.remove();
+    }
+    if (!isSoundArticleMode()) {
+      return;
+    }
+
+    const previewImage = String(meta && meta.previewImage ? meta.previewImage : "").trim();
+    if (!previewImage) {
+      return;
+    }
+
+    const figure = document.createElement("figure");
+    figure.className = "article-comparison sound-figure";
+    const title = String(meta && meta.previewTitle ? meta.previewTitle : "Spectral comparison").trim();
+    const caption = String(meta && meta.previewCaption ? meta.previewCaption : "").trim();
+    figure.innerHTML = `
+      <div class="article-comparison-header">
+        <p class="sound-index">Comparison</p>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      <img src="${escapeHtml(previewImage)}" alt="${escapeHtml(meta && meta.previewImageAlt ? meta.previewImageAlt : title || "Comparison image")}" loading="lazy" decoding="async" />
+      ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""}
+    `;
+    articleContent.appendChild(figure);
   }
 
   function installMap(mapConfig) {
@@ -269,6 +331,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function buildMapNetworkOptions(mapConfig) {
+    const preservePositions = Boolean(mapConfig && mapConfig.meta && mapConfig.meta.preservePositions);
     return {
       autoResize: true,
       interaction: {
@@ -279,7 +342,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         zoomView: true
       },
       layout: {
-        improvedLayout: true,
+        improvedLayout: !preservePositions,
         randomSeed: resolveMapLayoutSeed(mapConfig)
       },
       physics: {
@@ -348,14 +411,22 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     });
 
     network.on("hoverEdge", (params) => {
+      if (isSoundArticleMode()) {
+        return;
+      }
       hoveredEdgeId = params && params.edge ? params.edge : null;
       if (hoveredEdgeId) {
+        soundHoverRuntime.startMorphForEdge(hoveredEdgeId);
         triggerEdgeWave(hoveredEdgeId, getPointerImpulseStrength() * 0.85);
       }
       startEdgeWaveLoop();
     });
 
     network.on("blurEdge", () => {
+      if (isSoundArticleMode()) {
+        return;
+      }
+      soundHoverRuntime.stopMorph();
       hoveredEdgeId = null;
       network.redraw();
     });
@@ -365,6 +436,20 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       if (!nodeId) {
         return;
       }
+      const sectionId = getSectionIdForNode(nodeId);
+      if (sectionId) {
+        const nodeData = getNodeData(nodeId);
+        soundHoverRuntime.startForSection(sectionId, {
+          preserveMorph: isSoundArticleMode()
+        });
+        showContextPreviewForSection(sectionId, {
+          source: PREVIEW_SOURCE_GRAPH,
+          title: nodeData && nodeData.previewTitle
+            ? String(nodeData.previewTitle)
+            : (nodeData && nodeData.label ? String(nodeData.label) : ""),
+          meta: getSectionPreviewMeta(sectionId)
+        });
+      }
       const now = performance.now();
       if (nodeId === lastNodeImpulseId && now - lastNodeImpulseAt < 120) {
         return;
@@ -373,19 +458,10 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       lastNodeImpulseAt = now;
       triggerNodeImpulse(nodeId, getPointerImpulseStrength());
       startEdgeWaveLoop();
-
-      const sectionId = getSectionIdForNode(nodeId);
-      if (sectionId) {
-        const nodeData = getNodeData(nodeId);
-        showContextPreviewForSection(sectionId, {
-          source: PREVIEW_SOURCE_GRAPH,
-          title: nodeData && nodeData.label ? String(nodeData.label) : "",
-          meta: ""
-        });
-      }
     });
 
     network.on("blurNode", () => {
+      soundHoverRuntime.stopDirect();
       clearContextPreview(PREVIEW_SOURCE_GRAPH);
     });
 
@@ -481,6 +557,7 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function resetMapRuntimeState() {
+    soundHoverRuntime.stop();
     setPulsingNode(null);
     if (edgeWaveFrameId !== null) {
       window.cancelAnimationFrame(edgeWaveFrameId);
@@ -2107,6 +2184,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (!network || !edgeDataSet || !nodesDataSet) {
       return;
     }
+    if (isSoundArticleMode()) {
+      return;
+    }
 
     const edges = edgeDataSet.get();
     if (!edges.length) {
@@ -2350,7 +2430,20 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     return 10;
   }
 
+  function isSoundArticleMode() {
+    return String(articleMeta && articleMeta.pageType ? articleMeta.pageType : "")
+      .trim()
+      .toLowerCase() === "sound_article";
+  }
+
+  function isGraphSoundSuspended() {
+    return isSoundArticleMode();
+  }
+
   function maybePlayNodePluck(nodeId, impulseStrength) {
+    if (isGraphSoundSuspended()) {
+      return;
+    }
     if (!nodesDataSet) {
       return;
     }
@@ -2368,6 +2461,9 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function maybePlayEdgeSine(edgeId, impulseStrength) {
+    if (isGraphSoundSuspended()) {
+      return;
+    }
     if (!edgeDataSet || !network) {
       return;
     }
@@ -2459,6 +2555,94 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     mapContainer.addEventListener("pointerleave", () => {
       pointerSpeedPxMs *= 0.35;
     }, { passive: true });
+  }
+
+  function initSoundPlaneMorphControl() {
+    if (!mapContainer || mapPlaneMorphControlsInstalled) {
+      return;
+    }
+    mapPlaneMorphControlsInstalled = true;
+
+    let holdPointerId = null;
+
+    const resolveCanvasPoint = (event) => {
+      if (!network || !mapContainer || !(event instanceof PointerEvent)) {
+        return null;
+      }
+      const rect = mapContainer.getBoundingClientRect();
+      const domPoint = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+      if (typeof network.DOMtoCanvas === "function") {
+        return network.DOMtoCanvas(domPoint);
+      }
+      return domPoint;
+    };
+
+    const updateMorphPoint = (event) => {
+      if (!isSoundArticleMode() || holdPointerId === null || event.pointerId !== holdPointerId) {
+        return;
+      }
+      const canvasPoint = resolveCanvasPoint(event);
+      if (!canvasPoint) {
+        return;
+      }
+      soundHoverRuntime.updatePlaneMorphPoint(canvasPoint);
+    };
+
+    mapContainer.addEventListener("pointerdown", (event) => {
+      if (!isSoundArticleMode() || event.button !== 2) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const canvasPoint = resolveCanvasPoint(event);
+      if (!canvasPoint) {
+        return;
+      }
+      holdPointerId = event.pointerId;
+      if (typeof mapContainer.setPointerCapture === "function") {
+        try {
+          mapContainer.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore browsers that reject capture on embedded canvases.
+        }
+      }
+      soundHoverRuntime.startPlaneMorph(canvasPoint);
+    }, { passive: false, capture: true });
+
+    mapContainer.addEventListener("pointermove", updateMorphPoint, { passive: true });
+
+    mapContainer.addEventListener("contextmenu", (event) => {
+      if (!isSoundArticleMode()) {
+        return;
+      }
+      event.preventDefault();
+    }, { passive: false, capture: true });
+
+    const releaseMorph = (event) => {
+      if (holdPointerId === null) {
+        return;
+      }
+      if (event instanceof PointerEvent && event.pointerId !== holdPointerId) {
+        return;
+      }
+      if (event instanceof PointerEvent && typeof mapContainer.releasePointerCapture === "function") {
+        try {
+          if (mapContainer.hasPointerCapture(event.pointerId)) {
+            mapContainer.releasePointerCapture(event.pointerId);
+          }
+        } catch {
+          // Ignore release races.
+        }
+      }
+      holdPointerId = null;
+      soundHoverRuntime.stopPlaneMorph();
+    };
+
+    window.addEventListener("pointerup", releaseMorph, { passive: true });
+    window.addEventListener("pointercancel", releaseMorph, { passive: true });
   }
 
   function getPointerImpulseStrength() {
@@ -2882,7 +3066,8 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
 
   function isContextPreviewEnabled() {
     return Boolean(contextPreviewPane && contextPreviewTitle && contextPreviewMeta && contextPreviewBody)
-      && desktopPreviewMedia.matches;
+      && desktopPreviewMedia.matches
+      && !isSoundArticleMode();
   }
 
   function clearContextPreview(source, options = {}) {
@@ -2906,6 +3091,17 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     activePreviewSource = "";
     contextPreviewPages = [];
     contextPreviewPageIndex = 0;
+    const previewImage = String(articleMeta.previewImage || "").trim();
+    if (previewImage) {
+      contextPreviewTitle.textContent = articleMeta.previewTitle || "Spectral comparison";
+      contextPreviewMeta.textContent = articleMeta.previewCaption || "";
+      contextPreviewBody.innerHTML = renderContextPreviewMediaMarkup(
+        previewImage,
+        articleMeta.previewImageAlt || contextPreviewTitle.textContent || "Preview image",
+        ""
+      );
+      return;
+    }
     contextPreviewTitle.textContent = "";
     contextPreviewMeta.textContent = "";
     contextPreviewBody.innerHTML = "";
@@ -2965,7 +3161,11 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
         sectionId,
         title: page.title || getSectionHeading(sectionId),
         meta: page.meta || "",
-        focusText: trimPreviewText(page.focusText || "", 220)
+        focusText: trimPreviewText(page.focusText || "", 220),
+        previewImage: page.previewImage || section.dataset.previewImage || articleMeta.previewImage || "",
+        previewImageAlt: page.previewImageAlt || section.dataset.previewImageAlt || articleMeta.previewImageAlt || "",
+        previewCaption: page.previewCaption || section.dataset.previewCaption || articleMeta.previewCaption || "",
+        previewOnlyImage: parseBooleanValue(page.previewOnlyImage, section.dataset.previewOnlyImage)
       });
     }
     return result;
@@ -2999,10 +3199,19 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
     if (focusText) {
       blocks.push(`<p><strong>${escapeHtml(focusText)}</strong></p>`);
     }
-    for (const paragraph of paragraphs) {
-      blocks.push(`<p>${escapeHtml(paragraph)}</p>`);
+    if (page.previewImage) {
+      blocks.push(renderContextPreviewMediaMarkup(
+        page.previewImage,
+        page.previewImageAlt || title || "Preview image",
+        page.previewCaption || ""
+      ));
     }
-    if (!paragraphs.length && !focusText) {
+    if (!page.previewOnlyImage) {
+      for (const paragraph of paragraphs) {
+        blocks.push(`<p>${escapeHtml(paragraph)}</p>`);
+      }
+    }
+    if (!paragraphs.length && !focusText && !page.previewImage) {
       blocks.push("<p>No preview text available.</p>");
     }
     contextPreviewBody.innerHTML = blocks.join("");
@@ -3017,6 +3226,562 @@ import { playPluck, playSineTone } from "../js/audio-pluck.js";
       .map((el) => trimPreviewText(el.textContent || "", 220))
       .filter(Boolean);
     return blocks.slice(0, 3);
+  }
+
+  function renderContextPreviewMediaMarkup(src, alt, caption) {
+    const resolvedSrc = String(src || "").trim();
+    if (!resolvedSrc) {
+      return "";
+    }
+    const resolvedCaption = String(caption || "").trim();
+    return `<figure class="context-preview-media"><img src="${escapeHtml(resolvedSrc)}" alt="${escapeHtml(alt || "Preview image")}" loading="lazy" decoding="async" />${resolvedCaption ? `<figcaption>${escapeHtml(resolvedCaption)}</figcaption>` : ""}</figure>`;
+  }
+
+  function getSectionPreviewMeta(sectionId) {
+    const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+    if (!(section instanceof HTMLElement)) {
+      return "";
+    }
+    const summary = section.querySelector(".sound-summary");
+    return summary && summary.textContent ? summary.textContent.trim() : "";
+  }
+
+  function parseBooleanValue(primaryValue, fallbackValue) {
+    const value = primaryValue ?? fallbackValue;
+    if (typeof value === "boolean") {
+      return value;
+    }
+    const normalized = String(value || "").trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+  }
+
+  function applyArticleMode(pageType) {
+    const normalized = String(pageType || "").trim().toLowerCase();
+    if (articleModeClass) {
+      document.documentElement.classList.remove(articleModeClass);
+      document.body.classList.remove(articleModeClass);
+    }
+    articleModeClass = normalized
+      ? `article-mode-${normalized.replace(/[^a-z0-9]+/g, "-")}`
+      : "";
+    if (articleModeClass) {
+      document.documentElement.classList.add(articleModeClass);
+      document.body.classList.add(articleModeClass);
+    }
+  }
+
+  function createSoundHoverRuntime() {
+    let audioCtx = null;
+    let masterGain = null;
+    let activeSectionId = "";
+    let activeMorphKey = "";
+    let activePlaneMorph = false;
+    let currentPlanePoint = null;
+    let currentSource = null;
+    let currentSourceGain = null;
+    let currentMorphGain = null;
+    let morphTimerId = 0;
+    let gestureUnlockInstalled = false;
+    let playRequestToken = 0;
+    const decodedBufferByUrl = new Map();
+    const loadingBufferByUrl = new Map();
+
+    function ensureContext() {
+      if (audioCtx) {
+        return audioCtx;
+      }
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) {
+        return null;
+      }
+      audioCtx = new AudioCtor();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = SAMPLE_GAIN;
+      masterGain.connect(audioCtx.destination);
+      installGestureUnlock();
+      return audioCtx;
+    }
+
+    function installGestureUnlock() {
+      if (gestureUnlockInstalled) {
+        return;
+      }
+      gestureUnlockInstalled = true;
+      const resumeContext = () => {
+        if (!isAudioEnabled()) {
+          return;
+        }
+        const context = ensureContext();
+        if (context && context.state === "suspended") {
+          context.resume().catch(() => {});
+        }
+      };
+      window.addEventListener("pointerdown", resumeContext, { passive: true, capture: true });
+      window.addEventListener("keydown", resumeContext, { passive: true, capture: true });
+    }
+
+    async function loadBuffer(url) {
+      if (decodedBufferByUrl.has(url)) {
+        return decodedBufferByUrl.get(url) || null;
+      }
+      if (loadingBufferByUrl.has(url)) {
+        return loadingBufferByUrl.get(url) || null;
+      }
+      const context = ensureContext();
+      if (!context) {
+        return null;
+      }
+
+      const pending = fetch(url)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Unable to fetch ${url}.`);
+          }
+          return response.arrayBuffer();
+        })
+        .then((arrayBuffer) => context.decodeAudioData(arrayBuffer.slice(0)))
+        .then((buffer) => {
+          decodedBufferByUrl.set(url, buffer);
+          loadingBufferByUrl.delete(url);
+          return buffer;
+        })
+        .catch(() => {
+          loadingBufferByUrl.delete(url);
+          return null;
+        });
+
+      loadingBufferByUrl.set(url, pending);
+      return pending;
+    }
+
+    function clearCurrentSource() {
+      currentSource = null;
+      currentSourceGain = null;
+    }
+
+    function clearMorphState() {
+      currentMorphGain = null;
+      activeMorphKey = "";
+      activePlaneMorph = false;
+      currentPlanePoint = null;
+      if (morphTimerId) {
+        window.clearInterval(morphTimerId);
+        morphTimerId = 0;
+      }
+    }
+
+    function stopActiveSource() {
+      if (!audioCtx || !currentSource || !currentSourceGain) {
+        clearCurrentSource();
+        return;
+      }
+
+      const source = currentSource;
+      const gainNode = currentSourceGain;
+      const now = audioCtx.currentTime;
+
+      try {
+        gainNode.gain.cancelScheduledValues(now);
+        const currentValue = Math.max(0.0001, gainNode.gain.value || SAMPLE_GAIN);
+        gainNode.gain.setValueAtTime(currentValue, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + SAMPLE_FADE_SEC);
+        source.stop(now + SAMPLE_FADE_SEC + 0.03);
+      } catch {
+        try {
+          source.stop();
+        } catch {
+          // Ignore double-stop races while hover changes rapidly.
+        }
+      }
+
+      clearCurrentSource();
+    }
+
+    function stopMorphCloud() {
+      if (!audioCtx || !currentMorphGain) {
+        clearMorphState();
+        return;
+      }
+
+      const gainNode = currentMorphGain;
+      const now = audioCtx.currentTime;
+      if (morphTimerId) {
+        window.clearInterval(morphTimerId);
+        morphTimerId = 0;
+      }
+
+      try {
+        gainNode.gain.cancelScheduledValues(now);
+        const currentValue = Math.max(0.0001, gainNode.gain.value || 0.75);
+        gainNode.gain.setValueAtTime(currentValue, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + MORPH_FADE_SEC);
+      } catch {
+        // Ignore envelope races during rapid hover changes.
+      }
+
+      currentMorphGain = null;
+      activeMorphKey = "";
+    }
+
+    function resolvePlaybackRate() {
+      return clampNumber(
+        1 + pointerSpeedPxMs * SAMPLE_RATE_SPEED_SCALE,
+        SAMPLE_RATE_MIN,
+        SAMPLE_RATE_MAX
+      );
+    }
+
+    function getSectionAudioMeta(sectionId) {
+      const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+      if (!(section instanceof HTMLElement)) {
+        return null;
+      }
+
+      const rawAudioSrc = String(section.dataset.audioSrc || "").trim();
+      if (!rawAudioSrc) {
+        return null;
+      }
+
+      const audioUrl = new URL(rawAudioSrc, window.location.href).toString();
+      const rawCenterSec = Number.parseFloat(section.dataset.grainCenterSec || "");
+      return {
+        sectionId,
+        audioUrl,
+        centerSec: Number.isFinite(rawCenterSec) ? rawCenterSec : 0.55
+      };
+    }
+
+    function getNodeAudioMeta(nodeId) {
+      const sectionId = getSectionIdForNode(nodeId);
+      if (!sectionId) {
+        return null;
+      }
+      return getSectionAudioMeta(sectionId);
+    }
+
+    async function playSection(sectionId, requestToken) {
+      if (!isAudioEnabled()) {
+        return;
+      }
+      const context = ensureContext();
+      if (!context || context.state !== "running" || !masterGain) {
+        return;
+      }
+
+      const section = articleContent.querySelector(`#${cssEscape(sectionId)}`);
+      if (!(section instanceof HTMLElement)) {
+        return;
+      }
+
+      const rawAudioSrc = String(section.dataset.audioSrc || "").trim();
+      if (!rawAudioSrc) {
+        return;
+      }
+      const audioUrl = new URL(rawAudioSrc, window.location.href).toString();
+      const buffer = await loadBuffer(audioUrl);
+      if (!buffer) {
+        return;
+      }
+      if (requestToken !== playRequestToken || activeSectionId !== sectionId) {
+        return;
+      }
+
+      const now = context.currentTime;
+      const source = context.createBufferSource();
+      const gainNode = context.createGain();
+
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(resolvePlaybackRate(), now);
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.linearRampToValueAtTime(1, now + SAMPLE_ATTACK_SEC);
+
+      source.connect(gainNode);
+      gainNode.connect(masterGain);
+      currentSource = source;
+      currentSourceGain = gainNode;
+      source.onended = () => {
+        if (currentSource === source) {
+          clearCurrentSource();
+        }
+      };
+      source.start(now);
+    }
+
+    function emitMorphGrain(context, outputGain, buffer, centerSec, rateOffset = 1) {
+      const grainDuration = Math.min(MORPH_GRAIN_DURATION_SEC, Math.max(0.1, buffer.duration * 0.2));
+      const baseCenter = clampNumber(
+        Number.isFinite(centerSec) ? centerSec : 0.55,
+        0,
+        Math.max(0, buffer.duration - grainDuration)
+      );
+      const jitter = (Math.random() * 2 - 1) * MORPH_GRAIN_JITTER_SEC;
+      const startAt = clampNumber(
+        baseCenter + jitter,
+        0,
+        Math.max(0, buffer.duration - grainDuration)
+      );
+      const now = context.currentTime;
+      const source = context.createBufferSource();
+      const gainNode = context.createGain();
+      const playbackRate = clampNumber(resolvePlaybackRate() * rateOffset, SAMPLE_RATE_MIN, SAMPLE_RATE_MAX);
+
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(playbackRate, now);
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.linearRampToValueAtTime(0.62, now + 0.028);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + grainDuration);
+
+      source.connect(gainNode);
+      gainNode.connect(outputGain);
+      source.start(now, startAt, grainDuration);
+      source.stop(now + grainDuration + 0.04);
+    }
+
+    function collectPlaneMorphTargets(point) {
+      if (!network || !nodesDataSet || !point) {
+        return [];
+      }
+
+      const nodeIds = nodesDataSet.getIds();
+      const positions = network.getPositions(nodeIds);
+      const candidates = [];
+
+      for (const nodeId of nodeIds) {
+        const pos = positions[nodeId];
+        if (!pos) {
+          continue;
+        }
+        const meta = getNodeAudioMeta(nodeId);
+        if (!meta) {
+          continue;
+        }
+        const dx = pos.x - point.x;
+        const dy = pos.y - point.y;
+        const distance = Math.hypot(dx, dy);
+        const weight = 1 / Math.pow(Math.max(14, distance), PLANE_MORPH_DISTANCE_FALLOFF);
+        candidates.push({
+          nodeId,
+          distance,
+          weight,
+          meta
+        });
+      }
+
+      candidates.sort((a, b) => a.distance - b.distance);
+      const selected = candidates.slice(0, PLANE_MORPH_NEIGHBOR_COUNT);
+      const totalWeight = selected.reduce((sum, item) => sum + item.weight, 0) || 1;
+      return selected.map((item) => ({
+        ...item,
+        normalizedWeight: item.weight / totalWeight
+      }));
+    }
+
+    async function startPlaneMorph(point) {
+      if (!isAudioEnabled()) {
+        return;
+      }
+
+      stopActiveSource();
+      stopMorphCloud();
+      activeSectionId = "";
+      activeMorphKey = "";
+      activePlaneMorph = true;
+      currentPlanePoint = point;
+      playRequestToken += 1;
+
+      const context = ensureContext();
+      if (!context || !masterGain) {
+        return;
+      }
+      if (context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+
+      const now = context.currentTime;
+      const outputGain = context.createGain();
+      outputGain.gain.setValueAtTime(0.0001, now);
+      outputGain.gain.linearRampToValueAtTime(0.92, now + 0.08);
+      outputGain.connect(masterGain);
+      currentMorphGain = outputGain;
+
+      const emitPlaneCloud = async () => {
+        if (!activePlaneMorph || !currentMorphGain || !currentPlanePoint) {
+          return;
+        }
+
+        const targets = collectPlaneMorphTargets(currentPlanePoint);
+        if (!targets.length) {
+          return;
+        }
+
+        const buffers = await Promise.all(targets.map((target) => loadBuffer(target.meta.audioUrl)));
+        if (!activePlaneMorph || !currentMorphGain) {
+          return;
+        }
+
+        targets.forEach((target, index) => {
+          const buffer = buffers[index];
+          if (!buffer) {
+            return;
+          }
+          const weightGain = context.createGain();
+          const spread = ((index - (targets.length - 1) * 0.5) / Math.max(1, targets.length)) * (MORPH_SPREAD_CENTS / 1200);
+          weightGain.gain.value = clampNumber(target.normalizedWeight * 1.6, 0.12, 0.9);
+          weightGain.connect(outputGain);
+          emitMorphGrain(context, weightGain, buffer, target.meta.centerSec, 1 + spread);
+        });
+      };
+
+      void emitPlaneCloud();
+      morphTimerId = window.setInterval(() => {
+        void emitPlaneCloud();
+      }, MORPH_GRAIN_INTERVAL_MS);
+    }
+
+    function updatePlaneMorphPoint(point) {
+      if (!activePlaneMorph) {
+        return;
+      }
+      currentPlanePoint = point;
+    }
+
+    function stopPlaneMorph() {
+      stopMorphCloud();
+    }
+
+    function isPlaneMorphActive() {
+      return activePlaneMorph;
+    }
+
+    async function startMorphForEdge(edgeId) {
+      const resolvedEdgeId = String(edgeId || "").trim();
+      if (!resolvedEdgeId || !isAudioEnabled()) {
+        return;
+      }
+      if (activeMorphKey === resolvedEdgeId && currentMorphGain && morphTimerId) {
+        return;
+      }
+
+      const edge = edgeDataSet ? edgeDataSet.get(resolvedEdgeId) : null;
+      if (!edge) {
+        return;
+      }
+
+      const sectionA = getSectionIdForNode(edge.from);
+      const sectionB = getSectionIdForNode(edge.to);
+      if (!sectionA || !sectionB || sectionA === sectionB) {
+        return;
+      }
+
+      const metaA = getSectionAudioMeta(sectionA);
+      const metaB = getSectionAudioMeta(sectionB);
+      if (!metaA || !metaB) {
+        return;
+      }
+
+      stopActiveSource();
+      stopMorphCloud();
+      activeSectionId = "";
+      activeMorphKey = resolvedEdgeId;
+      playRequestToken += 1;
+
+      const context = ensureContext();
+      if (!context || !masterGain) {
+        return;
+      }
+      if (context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+
+      const [bufferA, bufferB] = await Promise.all([
+        loadBuffer(metaA.audioUrl),
+        loadBuffer(metaB.audioUrl)
+      ]);
+      if (!bufferA || !bufferB || activeMorphKey !== resolvedEdgeId) {
+        return;
+      }
+
+      const now = context.currentTime;
+      const outputGain = context.createGain();
+      outputGain.gain.setValueAtTime(0.0001, now);
+      outputGain.gain.linearRampToValueAtTime(0.92, now + 0.08);
+      outputGain.connect(masterGain);
+      currentMorphGain = outputGain;
+
+      const rateSpread = MORPH_SPREAD_CENTS / 1200;
+      const emitPair = () => {
+        if (!currentMorphGain || activeMorphKey !== resolvedEdgeId) {
+          return;
+        }
+        emitMorphGrain(context, outputGain, bufferA, metaA.centerSec, 1 - rateSpread);
+        emitMorphGrain(context, outputGain, bufferB, metaB.centerSec, 1 + rateSpread);
+      };
+
+      emitPair();
+      morphTimerId = window.setInterval(emitPair, MORPH_GRAIN_INTERVAL_MS);
+    }
+
+    function stopDirect() {
+      activeSectionId = "";
+      playRequestToken += 1;
+      stopActiveSource();
+    }
+
+    function stopMorph() {
+      stopMorphCloud();
+    }
+
+    function stop() {
+      activeSectionId = "";
+      activeMorphKey = "";
+      playRequestToken += 1;
+      stopActiveSource();
+      stopMorphCloud();
+    }
+
+    function startForSection(sectionId, options = {}) {
+      const resolvedSectionId = String(sectionId || "").trim();
+      const preserveMorph = Boolean(options && options.preserveMorph);
+      if (!resolvedSectionId) {
+        if (preserveMorph) {
+          stopDirect();
+        } else {
+          stop();
+        }
+        return;
+      }
+      if (activeSectionId === resolvedSectionId && currentSource) {
+        return;
+      }
+      if (preserveMorph) {
+        stopDirect();
+      } else {
+        stop();
+      }
+      activeSectionId = resolvedSectionId;
+      if (!isAudioEnabled()) {
+        return;
+      }
+      const context = ensureContext();
+      if (context && context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+      const requestToken = playRequestToken + 1;
+      playRequestToken = requestToken;
+      void playSection(resolvedSectionId, requestToken);
+    }
+
+    return {
+      startForSection,
+      startMorphForEdge,
+      startPlaneMorph,
+      updatePlaneMorphPoint,
+      stopPlaneMorph,
+      isPlaneMorphActive,
+      stopDirect,
+      stopMorph,
+      stop
+    };
   }
 
   function getSectionHeading(sectionId) {

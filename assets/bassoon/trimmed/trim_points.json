@@ -1,0 +1,189 @@
+{
+  "generator": "build_trimmed.py",
+  "silence_noise_db": -30,
+  "silence_min_duration_sec": 0.18,
+  "spoken_to_silence_min_sec": 0.9,
+  "onset_preroll_sec": 0.06,
+  "files": [
+    {
+      "file": "01_Multifonic rolmo.wav",
+      "trimmed_file": "trimmed/01_Multifonic rolmo.wav",
+      "trim_start_sec": 3.66844,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.433417,
+      "silence_window": {
+        "start": 1.12892,
+        "end": 3.72844,
+        "duration": 2.59952
+      }
+    },
+    {
+      "file": "02_Multifonic lower.wav",
+      "trimmed_file": "trimmed/02_Multifonic lower.wav",
+      "trim_start_sec": 3.30131,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.553688,
+      "silence_window": {
+        "start": 0.952979,
+        "end": 3.36131,
+        "duration": 2.40833
+      }
+    },
+    {
+      "file": "03_Multifonic lower.wav",
+      "trimmed_file": "trimmed/03_Multifonic lower.wav",
+      "trim_start_sec": 4.2514,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.690521,
+      "silence_window": {
+        "start": 1.11535,
+        "end": 4.3114,
+        "duration": 3.19604
+      }
+    },
+    {
+      "file": "04_Multifonic lower.wav",
+      "trimmed_file": "trimmed/04_Multifonic lower.wav",
+      "trim_start_sec": 3.6664,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.499771,
+      "silence_window": {
+        "start": 1.30519,
+        "end": 3.7264,
+        "duration": 2.42121
+      }
+    },
+    {
+      "file": "05_Multifonic lower.wav",
+      "trimmed_file": "trimmed/05_Multifonic lower.wav",
+      "trim_start_sec": 3.35531,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 2.923396,
+      "silence_window": {
+        "start": 1.08683,
+        "end": 3.41531,
+        "duration": 2.32848
+      }
+    },
+    {
+      "file": "06_Multifonic lower.wav",
+      "trimmed_file": "trimmed/06_Multifonic lower.wav",
+      "trim_start_sec": 2.58406,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 2.969,
+      "silence_window": {
+        "start": 0.973354,
+        "end": 2.64406,
+        "duration": 1.67071
+      }
+    },
+    {
+      "file": "07_Multifonic fujara - long shepherd pipe.wav",
+      "trimmed_file": "trimmed/07_Multifonic fujara - long shepherd pipe.wav",
+      "trim_start_sec": 2.73038,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 2.861188,
+      "silence_window": {
+        "start": 0.802042,
+        "end": 2.79038,
+        "duration": 1.98833
+      }
+    },
+    {
+      "file": "08_Multifonic higher.wav",
+      "trimmed_file": "trimmed/08_Multifonic higher.wav",
+      "trim_start_sec": 3.16002,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 2.620687,
+      "silence_window": {
+        "start": 1.11587,
+        "end": 3.22002,
+        "duration": 2.10415
+      }
+    },
+    {
+      "file": "09_Multifonic higher.wav",
+      "trimmed_file": "trimmed/09_Multifonic higher.wav",
+      "trim_start_sec": 2.98237,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.122438,
+      "silence_window": {
+        "start": 1.05825,
+        "end": 3.04237,
+        "duration": 1.98412
+      }
+    },
+    {
+      "file": "10_Multifonic higher.wav",
+      "trimmed_file": "trimmed/10_Multifonic higher.wav",
+      "trim_start_sec": 2.44804,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.072667,
+      "silence_window": {
+        "start": 1.18204,
+        "end": 2.50804,
+        "duration": 1.326
+      }
+    },
+    {
+      "file": "11_Multifonic higher.wav",
+      "trimmed_file": "trimmed/11_Multifonic higher.wav",
+      "trim_start_sec": 2.42506,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 2.803146,
+      "silence_window": {
+        "start": 1.05221,
+        "end": 2.48506,
+        "duration": 1.43285
+      }
+    },
+    {
+      "file": "12_Bissbigliando.wav",
+      "trimmed_file": "trimmed/12_Bissbigliando.wav",
+      "trim_start_sec": 3.1581,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 4.654625,
+      "silence_window": {
+        "start": 1.00027,
+        "end": 3.2181,
+        "duration": 2.21783
+      }
+    },
+    {
+      "file": "13_Colour sound.wav",
+      "trimmed_file": "trimmed/13_Colour sound.wav",
+      "trim_start_sec": 4.09558,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 5.009146,
+      "silence_window": {
+        "start": 1.4429,
+        "end": 4.15558,
+        "duration": 2.71269
+      }
+    },
+    {
+      "file": "14_Sing tone.wav",
+      "trimmed_file": "trimmed/14_Sing tone.wav",
+      "trim_start_sec": 2.75169,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 3.532938,
+      "silence_window": {
+        "start": 0.739604,
+        "end": 2.81169,
+        "duration": 2.07208
+      }
+    },
+    {
+      "file": "15_Slaps with reed and without reed.wav",
+      "trimmed_file": "trimmed/15_Slaps with reed and without reed.wav",
+      "trim_start_sec": 2.80506,
+      "method": "silence_end_before_onset",
+      "fallback_analyzed_from_sec": 5.523333,
+      "silence_window": {
+        "start": 0.981062,
+        "end": 2.86506,
+        "duration": 1.884
+      }
+    }
+  ]
+}
