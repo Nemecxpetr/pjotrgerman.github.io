@@ -6,7 +6,7 @@
     "updated": "2026-03-18",
     "eyebrow": "Sound Article",
     "pageType": "sound_article",
-    "mapHelp": "How to use the graph: hover a dot to hear its sample. Left-click a dot to change the article context on the left, or drag with the left mouse button to move through the graph. Click and hold the right mouse button anywhere in the graph to turn on the spatial morph, then move through the 2D plane to reshape the mix. Release the right mouse button to fade the morph out.",
+    "mapHelp": "How to use the graph: hover a dot to hear its sample. Left-click a dot to change the article context on the left, or drag with the left mouse button to move through the graph. Click and hold the right mouse button anywhere in the graph to turn on the spatial morph, then move through the 2D plane to reshape the mix. On Mac trackpads, Shift + left-click and hold does the same thing. Release to fade the morph out.",
     "previewImage": "../assets/bassoon/analysis_outputs/smoothed_spectra.png",
     "previewImageAlt": "Comparison image of the bassoon spectral set.",
     "previewCaption": "Shared comparison view for the full bassoon recording set.",

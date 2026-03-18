@@ -1279,7 +1279,7 @@ export function initBackgroundFx({
   }
 
   function onPointerLeave(ev) {
-    const forced = ev?.type === "blur";
+    const forced = Boolean(ev && ev.type === "blur");
     if (coarseStrokeActive && !forced) {
       return;
     }

@@ -118,6 +118,7 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
   let printMediaQueryList = null;
   let articleMeta = {};
   let articleModeClass = "";
+  let mapAvailable = false;
   let theme = readThemeValues();
   const soundHoverRuntime = createSoundHoverRuntime();
 
@@ -126,20 +127,14 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
   });
 
   async function init() {
-    const [rawMapConfig, articleHtml] = await Promise.all([
-      readJson(resolvePagePath(`content/${articleKey}.map.json`)),
-      readText(resolvePagePath(`content/${articleKey}.html`))
-    ]);
-    articleMeta = rawMapConfig.meta || {};
-    const mapViews = resolveMapViews(rawMapConfig);
-    mapViewByKey = mapViews.viewsByKey;
-    defaultMapViewKey = mapViews.defaultViewKey;
-    currentMapViewKey = mapViews.initialViewKey;
-
-    const initialMapConfig = mapViewByKey.get(currentMapViewKey);
-    if (!initialMapConfig) {
-      throw new Error(`Map view "${currentMapViewKey}" is not available.`);
+    const articleHtml = await readText(resolvePagePath(`content/${articleKey}.html`));
+    let rawMapConfig = null;
+    try {
+      rawMapConfig = await readJson(resolvePagePath(`content/${articleKey}.map.json`));
+    } catch (error) {
+      disableMapExperience(getErrorMessage(error, "Map data could not be loaded."));
     }
+    articleMeta = rawMapConfig && rawMapConfig.meta ? rawMapConfig.meta : {};
 
     articleContent.innerHTML = articleHtml;
     hydrateThreadPlaceholders();
@@ -151,21 +146,110 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
     });
     articleContent.dataset.pageType = String(articleMeta.pageType || "").trim();
 
-    initContextPreview();
-    initMobileMapScrollLock();
-    initPaneResizer();
-    initColumnResizer();
-    initContextShiftSystem();
-    installMap(initialMapConfig);
-    initSoundPlaneMorphControl();
-    writeViewParam(currentMapViewKey);
-    installTextPathHover();
-    installThreadLinks();
-    initPrintLifecycle();
+    runSafely("context preview", initContextPreview);
+    runSafely("mobile map scroll lock", initMobileMapScrollLock);
+    runSafely("pane resizer", initPaneResizer);
+    runSafely("column resizer", initColumnResizer);
+    runSafely("context shift system", initContextShiftSystem);
+
+    if (rawMapConfig) {
+      runSafely("map setup", () => {
+        const mapViews = resolveMapViews(rawMapConfig);
+        mapViewByKey = mapViews.viewsByKey;
+        defaultMapViewKey = mapViews.defaultViewKey;
+        currentMapViewKey = mapViews.initialViewKey;
+
+        const initialMapConfig = mapViewByKey.get(currentMapViewKey);
+        if (!initialMapConfig) {
+          throw new Error(`Map view "${currentMapViewKey}" is not available.`);
+        }
+
+        installMap(initialMapConfig);
+        mapAvailable = true;
+      }, (error) => {
+        disableMapExperience(getErrorMessage(error, "Interactive map unavailable in this browser."));
+      });
+    }
+
+    if (mapAvailable) {
+      runSafely("sound plane morph", initSoundPlaneMorphControl);
+      runSafely("view param sync", () => {
+        writeViewParam(currentMapViewKey);
+      });
+    }
+
+    runSafely("text path hover", installTextPathHover);
+    runSafely("thread links", installThreadLinks);
+    runSafely("print lifecycle", initPrintLifecycle);
     if (printModeEnabled) {
-      initPrintModeLayout();
+      runSafely("print mode layout", initPrintModeLayout);
+    } else if (mapAvailable) {
+      runSafely("initial section restore", restoreHash);
     } else {
-      restoreHash();
+      runSafely("mapless article fallback", revealArticleWithoutMap);
+    }
+  }
+
+  function runSafely(label, callback, onError) {
+    try {
+      return callback();
+    } catch (error) {
+      console.warn(`Article step failed: ${label}`, error);
+      if (typeof onError === "function") {
+        onError(error);
+      }
+      return null;
+    }
+  }
+
+  function getErrorMessage(error, fallbackMessage) {
+    if (error && typeof error.message === "string" && error.message.trim()) {
+      return error.message.trim();
+    }
+    return fallbackMessage;
+  }
+
+  function disableMapExperience(message) {
+    mapAvailable = false;
+    mapViewByKey = new Map();
+    defaultMapViewKey = "root";
+    currentMapViewKey = "";
+    if (network && typeof network.destroy === "function") {
+      network.destroy();
+    }
+    network = null;
+    resetMapRuntimeState();
+    sectionByNodeId = new Map();
+    nodeBySectionId = new Map();
+    nodeBaseSizeById = new Map();
+    nodesDataSet = null;
+    edgeDataSet = null;
+
+    if (mapContainer) {
+      mapContainer.classList.add("is-unavailable");
+      mapContainer.innerHTML = `<p class="loading">${escapeHtml(message || "Interactive map unavailable in this browser.")}</p>`;
+    }
+    if (mapHelpEl) {
+      mapHelpEl.textContent = "Map features are unavailable here. The article text remains fully readable.";
+    }
+    if (document.body && document.body.dataset) {
+      document.body.dataset.soundToggle = "off";
+    }
+    const soundToggle = document.querySelector(".sound-toggle");
+    if (soundToggle) {
+      soundToggle.remove();
+    }
+  }
+
+  function revealArticleWithoutMap() {
+    showAllSections();
+    const hash = decodeURIComponent(window.location.hash.replace(/^#/, "").trim());
+    if (!hash) {
+      return;
+    }
+    const target = articleContent.querySelector(`#${cssEscape(hash)}`);
+    if (target && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ block: "start" });
     }
   }
 
@@ -327,6 +411,11 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
       network.setData(visData);
       network.setOptions(networkOptions);
     }
+
+    if (mapContainer) {
+      mapContainer.classList.remove("is-unavailable");
+    }
+    mapAvailable = true;
 
   }
 
@@ -509,7 +598,13 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
     }
 
     currentMapViewKey = resolvedViewKey;
-    installMap(nextMapConfig);
+    try {
+      installMap(nextMapConfig);
+    } catch (error) {
+      disableMapExperience(getErrorMessage(error, "Interactive map unavailable in this browser."));
+      revealArticleWithoutMap();
+      return false;
+    }
     syncSelectionAfterMapViewSwitch(options.preferredSectionId);
     writeViewParam(currentMapViewKey);
     clearContextPreview("", { force: true });
@@ -2023,7 +2118,7 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
       .map((fragment) => fragment.trim())
       .filter(Boolean)
       .map((fragment) => fragment
-        .replaceAll("->", ">")
+        .split("->").join(">")
         .split(">")
         .map((nodeId) => nodeId.trim())
         .filter(Boolean))
@@ -2566,7 +2661,13 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
     let holdPointerId = null;
 
     const resolveCanvasPoint = (event) => {
-      if (!network || !mapContainer || !(event instanceof PointerEvent)) {
+      if (
+        !network
+        || !mapContainer
+        || !event
+        || typeof event.clientX !== "number"
+        || typeof event.clientY !== "number"
+      ) {
         return null;
       }
       const rect = mapContainer.getBoundingClientRect();
@@ -2592,7 +2693,9 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
     };
 
     mapContainer.addEventListener("pointerdown", (event) => {
-      if (!isSoundArticleMode() || event.button !== 2) {
+      const isSecondaryTrigger = event.button === 2;
+      const isModifierPrimaryTrigger = event.button === 0 && (event.shiftKey || event.altKey);
+      if (!isSoundArticleMode() || (!isSecondaryTrigger && !isModifierPrimaryTrigger)) {
         return;
       }
       event.preventDefault();
@@ -2625,10 +2728,10 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
       if (holdPointerId === null) {
         return;
       }
-      if (event instanceof PointerEvent && event.pointerId !== holdPointerId) {
+      if (event && typeof event.pointerId === "number" && event.pointerId !== holdPointerId) {
         return;
       }
-      if (event instanceof PointerEvent && typeof mapContainer.releasePointerCapture === "function") {
+      if (event && typeof event.pointerId === "number" && typeof mapContainer.releasePointerCapture === "function") {
         try {
           if (mapContainer.hasPointerCapture(event.pointerId)) {
             mapContainer.releasePointerCapture(event.pointerId);
@@ -3247,7 +3350,9 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
   }
 
   function parseBooleanValue(primaryValue, fallbackValue) {
-    const value = primaryValue ?? fallbackValue;
+    const value = typeof primaryValue !== "undefined" && primaryValue !== null
+      ? primaryValue
+      : fallbackValue;
     if (typeof value === "boolean") {
       return value;
     }
@@ -3832,9 +3937,9 @@ import { isAudioEnabled, playPluck, playSineTone } from "../js/audio-pluck.js";
 
   function escapeHtml(value) {
     return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   function cssEscape(value) {

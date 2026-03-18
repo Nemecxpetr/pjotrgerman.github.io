@@ -26,7 +26,7 @@ function initYearLabel() {
 }
 
 function initSoundToggle() {
-  if (document.body?.dataset.soundToggle === "off") {
+  if (document.body && document.body.dataset && document.body.dataset.soundToggle === "off") {
     return;
   }
 
@@ -181,12 +181,21 @@ function initPrintFxBridge() {
 }
 
 function bootstrap() {
-  initYearLabel();
-  initReleases();
-  initSoundToggle();
-  initPrintFxBridge();
+  const runInitStep = (label, callback) => {
+    try {
+      callback();
+    } catch (error) {
+      console.warn(`Main init step failed: ${label}`, error);
+    }
+  };
 
-  initBackgroundFx(getBackgroundFxOptions());
+  runInitStep("year label", initYearLabel);
+  runInitStep("releases", initReleases);
+  runInitStep("sound toggle", initSoundToggle);
+  runInitStep("print fx bridge", initPrintFxBridge);
+  runInitStep("background fx", () => {
+    initBackgroundFx(getBackgroundFxOptions());
+  });
 }
 
 bootstrap();

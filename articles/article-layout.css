@@ -160,6 +160,13 @@ body {
   overflow: hidden;
 }
 
+.mind-map.is-unavailable {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  cursor: default;
+}
+
 .mind-map,
 .mind-map canvas {
   cursor: pointer;
