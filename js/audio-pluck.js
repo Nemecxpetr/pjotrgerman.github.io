@@ -43,14 +43,38 @@ const SAFETY_SETTINGS = {
   masterGain: GLOBAL_VOLUME
 };
 
+const AUDIO_ENABLED_STORAGE_KEY = "pjotrgerman.audioEnabled";
+
 let audioCtx = null;
 let reverbChain = null;
-let audioEnabled = false;
+let audioEnabled = readStoredAudioEnabled();
 let visibilityGuardInstalled = false;
 let autoSuspendedForHidden = false;
 let audioReadyAtMs = 0;
 let lastPluckAtMs = -Infinity;
 let lastSineAtMs = -Infinity;
+
+function readStoredAudioEnabled() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(AUDIO_ENABLED_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function persistAudioEnabled(nextEnabled) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(AUDIO_ENABLED_STORAGE_KEY, nextEnabled ? "true" : "false");
+  } catch {
+    // Ignore storage failures and keep runtime state only.
+  }
+}
 
 function getAudioContext() {
   if (audioCtx) {
@@ -182,10 +206,18 @@ export function isAudioEnabled() {
 
 export function setAudioEnabled(nextEnabled) {
   audioEnabled = Boolean(nextEnabled);
+  persistAudioEnabled(audioEnabled);
 
   if (!audioCtx) {
     if (audioEnabled) {
-      audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+      const ac = getAudioContext();
+      if (ac && ac.state === "running") {
+        audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+      } else if (ac && ac.state === "suspended") {
+        ac.resume().then(() => {
+          audioReadyAtMs = performance.now() + SAFETY_SETTINGS.postResumeMuteMs;
+        }).catch(() => {});
+      }
     }
     return;
   }

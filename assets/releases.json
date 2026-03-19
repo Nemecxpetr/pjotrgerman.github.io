@@ -77,6 +77,17 @@
     ]
   },
   {
+    "date": "2026-03-19",
+    "dateLabel": "19 Mar 2026",
+    "work": "sn\u011b\u017eenky",
+    "workItalic": true,
+    "role": "album release",
+    "temporalStatus": "past",
+    "links": [
+      { "label": "TIDAL", "url": "https://tidal.com/album/508281854" }
+    ]
+  },
+  {
     "date": "2026-01-31",
     "dateLabel": "31 Jan 2026",
     "event": "Nanofestival",

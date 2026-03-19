@@ -22,156 +22,22 @@
   <canvas id="fx" aria-hidden="true"></canvas>
 
   <!-- Page content -->
-  <main class="wrap">
-    <header class="hero">
+  <main class="wrap wrap-top">
+    <header class="hero hero-press">
       <h1>Petr Němec</h1>
-      <p class="tagline">Sound Art • Research • Composition</p>
+      <p class="hero-summary">
+        Sound artist, composer, and researcher.
+      </p>
+      <nav class="hero-structure-links" aria-label="Page structure">
+        <a class="hero-structure-link" href="#upcoming-events">Upcoming</a>
+        <a class="hero-structure-link" href="#about">About</a>
+        <a class="hero-structure-link" href="#works">Works</a>
+        <a class="hero-structure-link" href="#releases">Releases</a>
+        <a class="hero-structure-link" href="#research">Research</a>
+      </nav>
     </header>
 
-    <section class="section" id="works">
-      <h2>Selected Works</h2>
-
-      <article class="work" id="work-cesta-do-kralovstvi-much">
-        <div class="work-meta">
-          <h3>Cesta do království much (pre-release)</h3>
-          <p class="work-desc">4 channel fixed media. 
-            imaginative narative composition inpired by workshop of <a href="https://suotsana.net/about/">Yenting Hsu</a> 
-            <br><b>2025</b></p>
-        </div>
-        <div class="audio-embed" aria-label="Audio player">
-          <audio controls preload="none">
-            <source src="assets/kralovstvi_much_preview - Stereo Out - Output.mp3" type="audio/mp3">
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      </article>
-
-      <article class="work">
-        <div class="work-meta">
-          <h3>Becoming Birdfish</h3>
-          <p class="work-desc">
-            Becoming Birdfish is a text/graphic score for two voices that functions as a guided imaginative situation.
-            It does not use a fixed recitation text, but a series of instructions and questions that gradually shift the performers’
-            attention from speaking to listening, from description to bodily experience, and from individual expression to dialogue
-             within a shared sonic space.
-             The score emphasizes communication beyond ordinary language:
-             if words appear, the piece invites the performers to continue without a known language and to work with the voice as a physical gesture.
-            <br> <b>2025</b></p>
-          <p class="work-participants">
-            <span class="role">Voices:</span> Bedřiška Ponížilová & Vojtěch Šembera
-          </p>
-        </div>
-        <div class="embed" aria-label="YouTube video embed">
-          <iframe
-            src="https://www.youtube.com/embed/-iINWMupkYo?si=esZdB4MHKqb2Ouqu" 
-            title="YouTube video player" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        </div>
-      </article>
-
-      <article class="work">
-        <div class="work-meta">
-          <h3>06-disconnected-v3-Stereo Out.wav</h3>
-          <p class="work-desc">Moments when a connection breaks so another can be formed. <br> 
-            Looking for existence in the fragile space between imagination and reality, between memory and vision. 
-            <br> <b>2025</b></p>
-          <p class="work-participants">
-            <span class="role">Choreographer/Dancers:</span> Vladena Klimek, Amálie Cuplová
-          </p>
-        </div>
-        <div class="embed" aria-label="YouTube video embed">
-          <iframe
-            src="https://www.youtube-nocookie.com/embed/skIycvHkkaQ"
-            title="06-disconnected-v3-Stereo Out.wav"
-            loading="lazy"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-          </iframe>
-        </div>
-      </article>
-
-      <article class="work">
-        <div class="work-meta">
-          <h3>hledání</h3>
-          <p class="work-desc">composition
-            <br> Searching for a feeling of hope in three sound layers hopelessly balancing each other.           
-            <br> <b>2024</b>
-          </p>
-        </div>
-        <div class="audio-embed" aria-label="Audio player">
-          <iframe
-            class="bandcamp-light"
-            style="border: 0; width: 100%; height: 120px;"
-            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=ffffff/linkcol=0687f5/tracklist=false/artwork=small/transparent=true/"
-            seamless>
-            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
-          </iframe>
-          <iframe
-            class="bandcamp-dark"
-            style="border: 0; width: 100%; height: 120px;"
-            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=333333/linkcol=0f91ff/tracklist=false/artwork=small/transparent=true/"
-            seamless>
-            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
-          </iframe>
-        </div>
-      </article>
-    </section>
-
-    <section class="section" id="upcoming-events">
-      <h2>Upcoming Events</h2>
-      <div class="release-list" id="upcoming-releases"></div>
-    </section>
-
-    <section class="section" id="releases">
-      <h2>Latest Releases</h2>
-      <div class="release-list" id="latest-releases"></div>
-      <div class="work-actions section-actions">
-        <a class="btn" href="releases.html">View all releases</a>
-      </div>
-    </section>
-
-    <section class="section" id="research">
-      <h2>Research</h2>
-
-        <article class="work research-item">
-          <div class="research-grid">
-            <div class="work-meta">
-              <h3>Exconv</h3>
-              <p class="work-desc">
-                The exconv research introduces an experimental toolkit for 1D and 2D FFT-based convolution, 
-                providing a unified framework for sophisticated cross-modal mappings between audio, images, and video. 
-                Through techniques such as spectral sculpting, the project establishes a bi-directional dialogue
-                where audio spectra shape visual parameters like radial filters and YCbCr channels, 
-                while video frames can reciprocally influence sonic textures. 
-                Positioned as a technologically pioneering form of sound art, 
-                this work utilizes the digital signal chain to reveal phenomena unrecognizable to the eye 
-                by embracing an aesthetics of failure, including glitches and unconventional algorithmic processes.
-              </p>
-            </div>
-            <div class="research-column" aria-label="Exconv links">
-              <a class="research-link" href="https://github.com/Nemecxpetr/exconv" target="_blank" rel="noreferrer">
-                <i class="fa-brands fa-github" aria-hidden="true"></i>
-                <span>GitHub</span>
-              </a>
-            </div>
-          </div>
-          <a class="research-link research-highlight research-highlight-row" href="https://www.instagram.com/stories/highlights/18441302296108489/" target="_blank" rel="noreferrer">
-            Instagram Highlight
-          </a>
-        </article>
-      </section>
-
-      <!--
-      <section class="section" id="about">
-      <h2>About</h2>
-      <p>
-        Short bio. Your themes, tools, collaborations, etc. Keep it 3–6 lines.
-      </p>
-      </section>
-      -->
-    <section class="section" id="contact">
+    <section class="section section-compact" id="contact">
       <h2>Contact</h2>
       <nav class="links" aria-label="Primary links">
         <a href="mailto:nemecxpetr@gmail.com" aria-label="Email">
@@ -195,24 +61,172 @@
           <span class="sr-only">Instagram</span>
         </a>
       </nav>
-      <p>
-        Reach me at <a href="mailto:nemecxpetr@gmail.com">nemecxpetr@gmail.com</a>.
+    </section>
+
+    <section class="section" id="upcoming-events">
+      <h2>Upcoming Events</h2>
+      <div class="release-list" id="upcoming-releases"></div>
+    </section>
+
+    <section class="section" id="about">
+      <h2>About</h2>
+      <p class="section-copy about-copy">
+        Petr Němec develops sound-based work across composition, performance, installation,
+        and research. The portfolio brings together fixed media pieces, collaborative stage work,
+        live situations, and technical experiments that connect listening with broader questions
+        of image, text, embodiment, and environment.
       </p>
     </section>
 
-    <section class="section secret-video-section" id="secret-video-section" aria-label="Hidden video challenge">
-      <div class="secret-video-block" id="secret-video-block">
-        <p class="secret-video-status" id="secret-video-status">
-          0/3
-        </p>
-        <div class="secret-video-frame" id="secret-video-frame" hidden>
+    <section class="section" id="works">
+      <h2>Selected Portfolio</h2>
+
+      <article class="work" id="work-cesta-do-kralovstvi-much">
+        <div class="work-meta">
+          <h3>Cesta do království much (pre-release)</h3>
+          <p class="work-desc">4 channel fixed media.
+            imaginative narative composition inpired by workshop of <a href="https://suotsana.net/about/">Yenting Hsu</a>
+            <br><b>2025</b></p>
+        </div>
+        <div class="audio-embed" aria-label="Audio player">
+          <audio controls preload="none">
+            <source src="assets/kralovstvi_much_preview - Stereo Out - Output.mp3" type="audio/mp3">
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      </article>
+
+      <article class="work" id="featured-sound-art">
+        <div class="work-meta">
+          <h3>Becoming Birdfish</h3>
+          <p class="work-desc">
+            Becoming Birdfish is a text/graphic score for two voices that functions as a guided imaginative situation.
+            It does not use a fixed recitation text, but a series of instructions and questions that gradually shift the performers’
+            attention from speaking to listening, from description to bodily experience, and from individual expression to dialogue
+             within a shared sonic space.
+             The score emphasizes communication beyond ordinary language:
+             if words appear, the piece invites the performers to continue without a known language and to work with the voice as a physical gesture.
+            <br> <b>2025</b></p>
+          <p class="work-participants">
+            <span class="role">Voices:</span> Bedřiška Ponížilová & Vojtěch Šembera
+          </p>
+        </div>
+        <div class="embed" aria-label="YouTube video embed">
           <iframe
-            src="https://www.youtube.com/embed/P6LDPTCs1Ck?si=OEEJOTWX9zJfIx9x" 
-            title="YouTube video player" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-            referrerpolicy="strict-origin-when-cross-origin">
+            src="https://www.youtube.com/embed/-iINWMupkYo?si=esZdB4MHKqb2Ouqu"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </article>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>06-disconnected-v3-Stereo Out.wav</h3>
+          <p class="work-desc">Moments when a connection breaks so another can be formed. <br>
+            Looking for existence in the fragile space between imagination and reality, between memory and vision.
+            <br> <b>2025</b></p>
+          <p class="work-participants">
+            <span class="role">Choreographer/Dancers:</span> Vladena Klimek, Amálie Cuplová
+          </p>
+        </div>
+        <div class="embed" aria-label="YouTube video embed">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/skIycvHkkaQ"
+            title="06-disconnected-v3-Stereo Out.wav"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen>
           </iframe>
+        </div>
+      </article>
+
+      <article class="work">
+        <div class="work-meta">
+          <h3>hledání</h3>
+          <p class="work-desc">composition
+            <br> Searching for a feeling of hope in three sound layers hopelessly balancing each other.
+            <br> <b>2024</b>
+          </p>
+        </div>
+        <div class="audio-embed" aria-label="Audio player">
+          <iframe
+            class="bandcamp-light"
+            style="border: 0; width: 100%; height: 120px;"
+            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=ffffff/linkcol=0687f5/tracklist=false/artwork=small/transparent=true/"
+            seamless>
+            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
+          </iframe>
+          <iframe
+            class="bandcamp-dark"
+            style="border: 0; width: 100%; height: 120px;"
+            src="https://bandcamp.com/EmbeddedPlayer/track=289284461/size=large/bgcol=333333/linkcol=0f91ff/tracklist=false/artwork=small/transparent=true/"
+            seamless>
+            <a href="https://petrnemec.bandcamp.com/track/hled-n">hledání by Petr Němec</a>
+          </iframe>
+        </div>
+      </article>
+    </section>
+
+    <section class="section" id="releases">
+      <h2>Latest Releases</h2>
+      <div class="release-list" id="latest-releases"></div>
+      <div class="work-actions section-actions">
+        <a class="btn" href="releases.html">View all releases</a>
+      </div>
+    </section>
+
+    <section class="section" id="research">
+      <h2>Research</h2>
+
+      <article class="work research-item">
+        <div class="research-grid">
+          <div class="work-meta">
+            <h3>Exconv</h3>
+            <p class="work-desc">
+              The exconv research introduces an experimental toolkit for 1D and 2D FFT-based convolution,
+              providing a unified framework for sophisticated cross-modal mappings between audio, images, and video.
+              Through techniques such as spectral sculpting, the project establishes a bi-directional dialogue
+              where audio spectra shape visual parameters like radial filters and YCbCr channels,
+              while video frames can reciprocally influence sonic textures.
+              Positioned as a technologically pioneering form of sound art,
+              this work utilizes the digital signal chain to reveal phenomena unrecognizable to the eye
+              by embracing an aesthetics of failure, including glitches and unconventional algorithmic processes.
+            </p>
+          </div>
+          <div class="research-column" aria-label="Exconv links">
+            <a class="research-link" href="https://github.com/Nemecxpetr/exconv" target="_blank" rel="noreferrer">
+              <i class="fa-brands fa-github" aria-hidden="true"></i>
+              <span>GitHub</span>
+            </a>
+          </div>
+        </div>
+        <a class="research-link research-highlight research-highlight-row" href="https://www.instagram.com/stories/highlights/18441302296108489/" target="_blank" rel="noreferrer">
+          Instagram Highlight
+        </a>
+      </article>
+    </section>
+
+    <section class="section" id="additional">
+      <h2>Additional</h2>
+      <p class="section-copy additional-copy">
+        Experiments, hidden interactions, and playful side material live here rather than in the main professional flow.
+      </p>
+      <div class="secret-video-section" id="secret-video-section" aria-label="Hidden video challenge">
+        <div class="secret-video-block" id="secret-video-block">
+          <p class="secret-video-status" id="secret-video-status">
+            0/3
+          </p>
+          <div class="secret-video-frame" id="secret-video-frame" hidden>
+            <iframe
+              src="https://www.youtube.com/embed/P6LDPTCs1Ck?si=OEEJOTWX9zJfIx9x"
+              title="YouTube video player"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin">
+            </iframe>
+          </div>
         </div>
       </div>
     </section>

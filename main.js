@@ -81,6 +81,25 @@ function initSoundToggle() {
   }
 }
 
+function initPersistedAudioRestore() {
+  if (!isAudioEnabled()) {
+    return;
+  }
+
+  unlockAudioContext();
+
+  const restoreAudio = () => {
+    unlockAudioContext();
+    window.removeEventListener("pointerdown", restoreAudio);
+    window.removeEventListener("keydown", restoreAudio);
+    window.removeEventListener("touchstart", restoreAudio);
+  };
+
+  window.addEventListener("pointerdown", restoreAudio, { passive: true });
+  window.addEventListener("keydown", restoreAudio, { passive: true });
+  window.addEventListener("touchstart", restoreAudio, { passive: true });
+}
+
 function getBackgroundFxOptions() {
   const canvas = document.getElementById("fx");
   const options = {
@@ -190,6 +209,7 @@ function bootstrap() {
   };
 
   runInitStep("year label", initYearLabel);
+  runInitStep("persisted audio restore", initPersistedAudioRestore);
   runInitStep("releases", initReleases);
   runInitStep("sound toggle", initSoundToggle);
   runInitStep("print fx bridge", initPrintFxBridge);

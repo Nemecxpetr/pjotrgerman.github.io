@@ -204,6 +204,15 @@ function getTodayUtcDateValue() {
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 }
 
+function getReleaseTemporalMode(item, todayUtcDateValue = getTodayUtcDateValue()) {
+  const status = cleanText(item && item.temporalStatus).toLowerCase();
+  if (status === RELEASE_MODE_PAST || status === RELEASE_MODE_UPCOMING) {
+    return status;
+  }
+  const dateValue = toDateValue(item && item.date);
+  return dateValue >= todayUtcDateValue ? RELEASE_MODE_UPCOMING : RELEASE_MODE_PAST;
+}
+
 function getReleaseKey(item) {
   if (!item) {
     return "";
@@ -268,11 +277,11 @@ function createReleaseCard(item, options) {
   const notes = cleanText(item.notes);
   const dateLabel = cleanText(item.dateLabel) || formatDateFromIso(item.date);
   const hasWork = Boolean(workHtml || workText);
-  const dateValue = toDateValue(item.date);
   const todayUtcDateValue = Number.isFinite(opts.todayUtcDateValue)
     ? opts.todayUtcDateValue
     : getTodayUtcDateValue();
-  const isUpcoming = dateValue >= todayUtcDateValue;
+  const releaseMode = getReleaseTemporalMode(item, todayUtcDateValue);
+  const isUpcoming = releaseMode === RELEASE_MODE_UPCOMING;
 
   const card = document.createElement("article");
   card.className = "work release";
@@ -632,12 +641,12 @@ async function loadReleases({
     });
     const todayUtc = getTodayUtcDateValue();
     const upcoming = indexed
-      .filter((item) => toDateValue(item.date) >= todayUtc)
+      .filter((item) => getReleaseTemporalMode(item, todayUtc) === RELEASE_MODE_UPCOMING)
       .sort((a, b) => {
         const diff = toDateValue(a.date) - toDateValue(b.date);
         return diff !== 0 ? diff : a._index - b._index;
       });
-    const latest = indexed.filter((item) => toDateValue(item.date) < todayUtc);
+    const latest = indexed.filter((item) => getReleaseTemporalMode(item, todayUtc) === RELEASE_MODE_PAST);
     const past = latest;
 
     const yearRange = getYearRange(indexed);
