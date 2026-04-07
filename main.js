@@ -8,6 +8,8 @@ import {
   unlockAudioContext
 } from "./js/audio-pluck.js";
 
+const PORTFOLIO_PRINT_SOURCE_URL = "https://nemecxpetr.github.io/pjotrgerman.github.io/";
+
 /**
  * Main app bootstrap.
  *
@@ -18,11 +20,186 @@ import {
  * This lets one shared entry point power both `index.html` and `releases.html`.
  */
 
+function initPrintModeState() {
+  const params = new URLSearchParams(window.location.search);
+  const printFlag = String(params.get("print") || "").trim().toLowerCase();
+  const printTheme = String(params.get("printTheme") || "").trim().toLowerCase();
+  const printStyle = String(params.get("printStyle") || "").trim().toLowerCase();
+  const prefersDarkTheme = Boolean(
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  const isPrintMode = printFlag === "1" || printFlag === "true" || printFlag === "yes";
+  const shouldUseScreenStyle = printStyle === "screen" || !printStyle;
+  const secretVideoBlock = document.getElementById("secret-video-block");
+  const secretVideoFrame = document.getElementById("secret-video-frame");
+
+  const syncSecretVideoPrintState = () => {
+    const isSecretVideoHidden = Boolean(
+      secretVideoBlock
+      && secretVideoFrame
+      && secretVideoFrame.hidden
+      && !secretVideoBlock.classList.contains("is-unlocked")
+    );
+    document.documentElement.classList.toggle("print-secret-video-hidden", isSecretVideoHidden);
+    document.body.classList.toggle("print-secret-video-hidden", isSecretVideoHidden);
+  };
+
+  const applyPrintClasses = () => {
+    if (isPrintMode && document.body && document.body.dataset) {
+      document.body.dataset.soundToggle = "off";
+    }
+
+    document.documentElement.classList.add("print-mode");
+    document.body.classList.add("print-mode");
+
+    document.documentElement.classList.toggle("print-style-screen", shouldUseScreenStyle);
+    document.body.classList.toggle("print-style-screen", shouldUseScreenStyle);
+
+    const shouldUseDarkTheme = printTheme === "dark" || (printTheme !== "light" && prefersDarkTheme);
+    document.documentElement.classList.toggle("print-theme-dark", shouldUseDarkTheme);
+    document.body.classList.toggle("print-theme-dark", shouldUseDarkTheme);
+    document.documentElement.classList.toggle("print-theme-light", !shouldUseDarkTheme);
+    document.body.classList.toggle("print-theme-light", !shouldUseDarkTheme);
+    syncSecretVideoPrintState();
+  };
+
+  const clearTransientPrintClasses = () => {
+    if (isPrintMode) {
+      return;
+    }
+
+    document.documentElement.classList.remove(
+      "print-mode",
+      "print-style-screen",
+      "print-theme-dark",
+      "print-theme-light",
+      "print-secret-video-hidden"
+    );
+    document.body.classList.remove(
+      "print-mode",
+      "print-style-screen",
+      "print-theme-dark",
+      "print-theme-light",
+      "print-secret-video-hidden"
+    );
+  };
+
+  if (isPrintMode) {
+    applyPrintClasses();
+  }
+
+  window.addEventListener("beforeprint", applyPrintClasses);
+  window.addEventListener("afterprint", clearTransientPrintClasses);
+}
+
 function initYearLabel() {
   const yearEl = document.getElementById("year");
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
+}
+
+function initPrintWorkLinks() {
+  const workEls = [...document.querySelectorAll(".work")];
+  if (!workEls.length) {
+    return;
+  }
+
+  const normalizeMediaUrl = (value) => {
+    const rawValue = String(value || "").trim();
+    if (!rawValue) {
+      return "";
+    }
+
+    try {
+      const url = new URL(rawValue, window.location.href);
+
+      if (/youtube(?:-nocookie)?\.com$/i.test(url.hostname) && url.pathname.startsWith("/embed/")) {
+        const videoId = url.pathname.split("/").filter(Boolean).pop();
+        if (videoId) {
+          return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+        }
+      }
+
+      return url.toString();
+    } catch {
+      return rawValue;
+    }
+  };
+
+  const resolveWorkMediaUrl = (workEl) => {
+    const audioSource = workEl.querySelector("audio source[src]");
+    if (audioSource) {
+      return normalizeMediaUrl(audioSource.getAttribute("src"));
+    }
+
+    const mediaLink = workEl.querySelector(".audio-embed a[href], .embed a[href], .video-embed a[href]");
+    if (mediaLink) {
+      return normalizeMediaUrl(mediaLink.getAttribute("href"));
+    }
+
+    const mediaFrame = workEl.querySelector(".audio-embed iframe[src], .embed iframe[src], .video-embed iframe[src]");
+    if (mediaFrame) {
+      return normalizeMediaUrl(mediaFrame.getAttribute("src"));
+    }
+
+    return "";
+  };
+
+  const buildPortfolioUrl = (workEl) => {
+    const url = new URL(PORTFOLIO_PRINT_SOURCE_URL);
+    url.hash = workEl.id ? workEl.id : "works";
+    return url.toString();
+  };
+
+  for (const workEl of workEls) {
+    if (workEl.querySelector(".work-print-links")) {
+      continue;
+    }
+
+    const workMeta = workEl.querySelector(".work-meta");
+    if (!workMeta) {
+      continue;
+    }
+
+    const mediaUrl = resolveWorkMediaUrl(workEl);
+    const portfolioUrl = buildPortfolioUrl(workEl);
+    const linkItems = [];
+
+    linkItems.push(`
+      <span class="work-print-link-row">
+        <span class="work-print-link-label">Portfolio:</span>
+        <a href="${escapeHtml(portfolioUrl)}">${escapeHtml(portfolioUrl)}</a>
+      </span>
+    `);
+
+    if (mediaUrl) {
+      linkItems.push(`
+        <span class="work-print-link-row">
+          <span class="work-print-link-label">Media:</span>
+          <a href="${escapeHtml(mediaUrl)}">${escapeHtml(mediaUrl)}</a>
+        </span>
+      `);
+    }
+
+    if (!linkItems.length) {
+      continue;
+    }
+
+    const linksBlock = document.createElement("div");
+    linksBlock.className = "work-print-links";
+    linksBlock.innerHTML = linkItems.join("");
+    workMeta.appendChild(linksBlock);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function initSoundToggle() {
@@ -208,7 +385,9 @@ function bootstrap() {
     }
   };
 
+  runInitStep("print mode state", initPrintModeState);
   runInitStep("year label", initYearLabel);
+  runInitStep("print work links", initPrintWorkLinks);
   runInitStep("persisted audio restore", initPersistedAudioRestore);
   runInitStep("releases", initReleases);
   runInitStep("sound toggle", initSoundToggle);
