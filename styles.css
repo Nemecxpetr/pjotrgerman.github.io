@@ -1090,8 +1090,17 @@ body[data-release-page="true"] .release-panel[data-release-mode="upcoming"] .rel
   page-break-inside: avoid;
 }
 
+.print-mode #releases {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
 .print-mode .release-list {
   gap: 10px;
+}
+
+.print-mode #releases .section-actions {
+  display: none !important;
 }
 
 .print-mode .work,
@@ -1248,8 +1257,17 @@ body[data-release-page="true"] .release-panel[data-release-mode="upcoming"] .rel
     page-break-inside: avoid;
   }
 
+  #releases {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
   .release-list {
     gap: 10px;
+  }
+
+  #releases .section-actions {
+    display: none !important;
   }
 
   .work,

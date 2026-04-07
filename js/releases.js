@@ -12,6 +12,18 @@ const RELEASE_MODE_PAST = "past";
 const RELEASE_MODE_UPCOMING = "upcoming";
 const RELEASE_MODE_SWITCH_THRESHOLD = 0.5;
 const RELEASE_MODE_HOVER_BLEND_WIDTH = 0.07;
+const PRINT_PAGE_HEIGHT_MM = 285;
+const PRINT_PAGE_FIT_SAFETY_PX = 12;
+
+const releaseRuntimeState = {
+  latestItems: [],
+  latestOptions: null,
+  latestReleasesEl: null,
+  latestSectionEl: null,
+  printListenersBound: false,
+  printMediaQueryList: null,
+  fitTimerId: null
+};
 
 function cleanText(value) {
   if (typeof value !== "string") {
@@ -181,6 +193,25 @@ function clamp01(value) {
     return 0;
   }
   return Math.max(0, Math.min(1, number));
+}
+
+function mmToPx(mm) {
+  const value = Number(mm);
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return (value * 96) / 25.4;
+}
+
+function isPrintModeActive() {
+  const params = new URLSearchParams(window.location.search);
+  const printFlag = String(params.get("print") || "").trim().toLowerCase();
+  return (
+    printFlag === "1"
+    || printFlag === "true"
+    || printFlag === "yes"
+    || document.documentElement.classList.contains("print-mode")
+  );
 }
 
 function mapHoverRatioToModeProgress(ratio) {
@@ -447,6 +478,121 @@ function renderReleases(target, items, options) {
   }
 }
 
+function fitLatestReleasesForPrint() {
+  const latestSectionEl = releaseRuntimeState.latestSectionEl;
+  const latestReleasesEl = releaseRuntimeState.latestReleasesEl;
+  if (!latestSectionEl || !latestReleasesEl || !isPrintModeActive()) {
+    return;
+  }
+
+  const itemEls = Array.from(latestReleasesEl.children);
+  if (!itemEls.length) {
+    return;
+  }
+
+  for (const itemEl of itemEls) {
+    itemEl.hidden = false;
+    itemEl.style.display = "";
+  }
+
+  const pageHeightPx = mmToPx(PRINT_PAGE_HEIGHT_MM);
+  if (pageHeightPx <= 0) {
+    return;
+  }
+
+  const sectionRect = latestSectionEl.getBoundingClientRect();
+  const sectionTop = sectionRect.top + window.scrollY;
+  const pageIndex = Math.floor(Math.max(0, sectionTop) / pageHeightPx);
+  const pageBottom = ((pageIndex + 1) * pageHeightPx) - PRINT_PAGE_FIT_SAFETY_PX;
+
+  let overflowStarted = false;
+  for (const itemEl of itemEls) {
+    if (overflowStarted) {
+      itemEl.hidden = true;
+      itemEl.style.display = "none";
+      continue;
+    }
+
+    const rect = itemEl.getBoundingClientRect();
+    const itemBottom = rect.bottom + window.scrollY;
+    if (itemBottom > pageBottom) {
+      itemEl.hidden = true;
+      itemEl.style.display = "none";
+      overflowStarted = true;
+    }
+  }
+}
+
+function scheduleLatestReleasesPrintFit() {
+  if (releaseRuntimeState.fitTimerId !== null) {
+    window.clearTimeout(releaseRuntimeState.fitTimerId);
+    releaseRuntimeState.fitTimerId = null;
+  }
+
+  window.requestAnimationFrame(() => {
+    fitLatestReleasesForPrint();
+    releaseRuntimeState.fitTimerId = window.setTimeout(() => {
+      releaseRuntimeState.fitTimerId = null;
+      fitLatestReleasesForPrint();
+    }, 120);
+  });
+}
+
+function renderLatestReleasesForCurrentMode() {
+  if (!releaseRuntimeState.latestReleasesEl || !releaseRuntimeState.latestOptions) {
+    return;
+  }
+
+  const limit = isPrintModeActive()
+    ? releaseRuntimeState.latestItems.length
+    : 3;
+
+  renderReleases(
+    releaseRuntimeState.latestReleasesEl,
+    releaseRuntimeState.latestItems,
+    {
+      ...releaseRuntimeState.latestOptions,
+      limit
+    }
+  );
+
+  if (isPrintModeActive()) {
+    scheduleLatestReleasesPrintFit();
+  }
+}
+
+function ensureLatestReleasesPrintLifecycle() {
+  if (releaseRuntimeState.printListenersBound) {
+    return;
+  }
+
+  const rerenderForPrintState = () => {
+    renderLatestReleasesForCurrentMode();
+  };
+
+  window.addEventListener("beforeprint", rerenderForPrintState);
+  window.addEventListener("afterprint", rerenderForPrintState);
+  window.addEventListener("resize", () => {
+    if (isPrintModeActive()) {
+      scheduleLatestReleasesPrintFit();
+    }
+  }, { passive: true });
+
+  if (typeof window.matchMedia === "function") {
+    releaseRuntimeState.printMediaQueryList = window.matchMedia("print");
+    const onPrintQueryChange = () => {
+      rerenderForPrintState();
+    };
+    if (typeof releaseRuntimeState.printMediaQueryList.addEventListener === "function") {
+      releaseRuntimeState.printMediaQueryList.addEventListener("change", onPrintQueryChange);
+    } else if (typeof releaseRuntimeState.printMediaQueryList.addListener === "function") {
+      releaseRuntimeState.printMediaQueryList.addListener(onPrintQueryChange);
+    }
+  }
+
+  releaseRuntimeState.printListenersBound = true;
+}
+
 function applyFocusFromQuery(searchRoot, setMode) {
   if (!searchRoot) {
     return;
@@ -673,8 +819,7 @@ async function loadReleases({
       });
     }
     if (latestReleasesEl) {
-      renderReleases(latestReleasesEl, latest, {
-        limit: 3,
+      const latestOptions = {
         showLinks: false,
         showNotes: false,
         yearRange: pastYearRange,
@@ -684,7 +829,13 @@ async function loadReleases({
           const label = cleanText(item.event) || cleanText(item.work) || "release";
           return `Open ${label} in all releases`;
         }
-      });
+      };
+      releaseRuntimeState.latestItems = latest;
+      releaseRuntimeState.latestOptions = latestOptions;
+      releaseRuntimeState.latestReleasesEl = latestReleasesEl;
+      releaseRuntimeState.latestSectionEl = latestReleasesEl.closest("#releases");
+      renderLatestReleasesForCurrentMode();
+      ensureLatestReleasesPrintLifecycle();
     }
     if (fullPastReleasesEl) {
       renderReleases(fullPastReleasesEl, past, {
@@ -726,7 +877,12 @@ async function loadReleases({
       });
     }
     if (latestReleasesEl) {
-      renderReleases(latestReleasesEl, [], { limit: 0 });
+      releaseRuntimeState.latestItems = [];
+      releaseRuntimeState.latestOptions = {};
+      releaseRuntimeState.latestReleasesEl = latestReleasesEl;
+      releaseRuntimeState.latestSectionEl = latestReleasesEl.closest("#releases");
+      renderLatestReleasesForCurrentMode();
+      ensureLatestReleasesPrintLifecycle();
     }
     if (fullPastReleasesEl) {
       renderReleases(fullPastReleasesEl, [], {
@@ -752,6 +908,9 @@ async function loadReleases({
 
   window.requestAnimationFrame(() => {
     syncReleaseColumnWidth();
+    if (isPrintModeActive()) {
+      scheduleLatestReleasesPrintFit();
+    }
     applyFocusFromQuery(focusSearchRoot, modeControl ? modeControl.setMode : null);
   });
 }
