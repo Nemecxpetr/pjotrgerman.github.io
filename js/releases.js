@@ -149,6 +149,22 @@ function formatDateFromIso(iso) {
   return `${String(day).padStart(2, "0")} ${monthName} ${year}`;
 }
 
+function formatDateRange(item) {
+  if (!item) {
+    return "";
+  }
+  const label = cleanText(item.dateLabel);
+  if (label) {
+    return label;
+  }
+  const start = formatDateFromIso(item.date);
+  const end = formatDateFromIso(item.dateEnd);
+  if (start && end && start !== end) {
+    return `${start} - ${end}`;
+  }
+  return start || end;
+}
+
 function parseIsoDateParts(iso) {
   if (typeof iso !== "string") {
     return null;
@@ -236,7 +252,7 @@ function getTodayUtcDateValue() {
 }
 
 function getReleaseTemporalMode(item, todayUtcDateValue = getTodayUtcDateValue()) {
-  const status = cleanText(item && item.temporalStatus).toLowerCase();
+  const status = (cleanText(item && item.status) || cleanText(item && item.temporalStatus)).toLowerCase();
   if (status === RELEASE_MODE_PAST || status === RELEASE_MODE_UPCOMING) {
     return status;
   }
@@ -297,17 +313,107 @@ function appendDetailLink(lineEl, label, url) {
   lineEl.appendChild(anchor);
 }
 
+function getLocationText(item) {
+  if (!item) {
+    return "";
+  }
+  const venue = cleanText(item.venue) || cleanText(item.place);
+  const city = cleanText(item.city);
+  const country = cleanText(item.country);
+  return [venue, city, country].filter(Boolean).join(", ");
+}
+
+function normalizeReleaseLink(link) {
+  if (!link || typeof link !== "object") {
+    return null;
+  }
+  const label = cleanText(link.label);
+  const url = cleanText(link.url);
+  if (!label || !url) {
+    return null;
+  }
+  return {
+    label,
+    url,
+    platform: cleanText(link.platform)
+  };
+}
+
+function getPrimaryReleaseLink(item) {
+  if (!item || !item.links) {
+    return null;
+  }
+  if (Array.isArray(item.links)) {
+    return normalizeReleaseLink(item.links[0]);
+  }
+  return normalizeReleaseLink(item.links.primary)
+    || normalizeReleaseLink(item.links.portfolio)
+    || normalizeReleaseLink(item.links.venue);
+}
+
+function getSecondaryReleaseLinks(item, primaryLink) {
+  if (!item || !item.links) {
+    return [];
+  }
+  const sourceLinks = Array.isArray(item.links)
+    ? item.links.slice(1)
+    : Array.isArray(item.links.secondary)
+      ? item.links.secondary
+      : [
+        ...(Array.isArray(item.links.documentation) ? item.links.documentation : []),
+        item.links.portfolio,
+        item.links.venue
+      ];
+  const primaryUrl = primaryLink ? primaryLink.url : "";
+  const seen = new Set(primaryUrl ? [primaryUrl] : []);
+  return sourceLinks
+    .map(normalizeReleaseLink)
+    .filter(Boolean)
+    .filter((link) => {
+      if (seen.has(link.url)) {
+        return false;
+      }
+      seen.add(link.url);
+      return true;
+    });
+}
+
+function formatCollaborators(collaborators) {
+  if (!Array.isArray(collaborators) || !collaborators.length) {
+    return "";
+  }
+  const names = collaborators
+    .map((collaborator) => {
+      if (typeof collaborator === "string") {
+        return cleanText(collaborator);
+      }
+      if (!collaborator || typeof collaborator !== "object") {
+        return "";
+      }
+      const name = cleanText(collaborator.name);
+      const role = cleanText(collaborator.role);
+      if (!name) {
+        return "";
+      }
+      return role ? `${name} (${role})` : name;
+    })
+    .filter(Boolean);
+  return names.join(", ");
+}
+
 function createReleaseCard(item, options) {
   const opts = options || {};
+  const titleText = cleanText(item.title) || cleanText(item.work);
   const event = cleanText(item.event);
-  const workText = cleanText(item.work);
+  const workText = titleText;
   const workHtml = cleanText(item.workHtml);
-  const role = cleanText(item.role);
-  const place = cleanText(item.place);
+  const role = cleanText(item.format) || cleanText(item.role) || cleanText(item.type);
+  const place = getLocationText(item);
   const placeUrl = cleanText(item.placeUrl);
-  const notes = cleanText(item.notes);
-  const dateLabel = cleanText(item.dateLabel) || formatDateFromIso(item.date);
-  const hasWork = Boolean(workHtml || workText);
+  const collaborators = formatCollaborators(item.collaborators);
+  const notes = cleanText(item.context) || cleanText(item.notes);
+  const dateLabel = formatDateRange(item);
+  const hasWork = Boolean(workHtml || titleText);
   const todayUtcDateValue = Number.isFinite(opts.todayUtcDateValue)
     ? opts.todayUtcDateValue
     : getTodayUtcDateValue();
@@ -341,8 +447,6 @@ function createReleaseCard(item, options) {
   if (hasWork) {
     if (workHtml) {
       title.innerHTML = workHtml;
-    } else if (item.workItalic) {
-      title.innerHTML = `<em>${escapeHtml(workText)}</em>`;
     } else {
       title.textContent = workText;
     }
@@ -381,6 +485,13 @@ function createReleaseCard(item, options) {
     meta.appendChild(detailLine);
   }
 
+  if (collaborators) {
+    const collaboratorLine = document.createElement("p");
+    collaboratorLine.className = "work-desc release-collaborators";
+    collaboratorLine.textContent = `With ${collaborators}`;
+    meta.appendChild(collaboratorLine);
+  }
+
   if (notes && opts.showNotes !== false) {
     const notesLine = document.createElement("p");
     notesLine.className = "work-desc";
@@ -391,49 +502,43 @@ function createReleaseCard(item, options) {
   grid.appendChild(meta);
 
   const allowLinks = opts.showLinks !== false;
-  if (allowLinks && Array.isArray(item.links) && item.links.length) {
-    const validLinks = item.links
-      .filter((link) => link && typeof link.url === "string" && typeof link.label === "string")
-      .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
-      .filter((link) => link.label && link.url);
+  if (allowLinks) {
+    const primary = getPrimaryReleaseLink(item);
+    const secondaryLinks = getSecondaryReleaseLinks(item, primary);
 
-    if (validLinks.length) {
-      const primary = validLinks[0];
-      const column = document.createElement("a");
-      column.className = "release-column";
-      column.href = primary.url;
-      column.textContent = primary.label;
-      if (/^https?:\/\//i.test(primary.url)) {
-        column.target = "_blank";
-        column.rel = "noreferrer";
-      }
-      grid.appendChild(column);
+    if (primary || secondaryLinks.length) {
+      const actions = document.createElement("div");
+      actions.className = "release-actions";
 
-      if (validLinks.length > 1) {
-        const secondaryWrap = document.createElement("div");
-        secondaryWrap.className = "release-secondary";
-        validLinks.slice(1).forEach((link) => {
-          const anchor = document.createElement("a");
-          anchor.className = "release-secondary-link";
-          anchor.href = link.url;
-          anchor.textContent = link.label;
-          if (/^https?:\/\//i.test(link.url)) {
-            anchor.target = "_blank";
-            anchor.rel = "noreferrer";
-          }
-          secondaryWrap.appendChild(anchor);
-        });
-        meta.appendChild(secondaryWrap);
+      if (primary) {
+        const primaryAction = document.createElement("a");
+        primaryAction.className = "release-primary-action";
+        primaryAction.href = primary.url;
+        primaryAction.textContent = primary.label;
+        if (/^https?:\/\//i.test(primary.url)) {
+          primaryAction.target = "_blank";
+          primaryAction.rel = "noreferrer";
+        }
+        actions.appendChild(primaryAction);
       }
-    } else {
-      grid.classList.add("release-grid-spacer");
+
+      secondaryLinks.forEach((link) => {
+        const anchor = document.createElement("a");
+        anchor.className = "release-secondary-action";
+        anchor.href = link.url;
+        anchor.textContent = link.label;
+        if (/^https?:\/\//i.test(link.url)) {
+          anchor.target = "_blank";
+          anchor.rel = "noreferrer";
+        }
+        actions.appendChild(anchor);
+      });
+
+      meta.appendChild(actions);
     }
-  } else if (allowLinks) {
-    grid.classList.add("release-grid-spacer");
-  } else {
-    grid.classList.add("release-grid-full");
   }
 
+  grid.classList.add("release-grid-full");
   card.appendChild(grid);
   if (typeof opts.cardHref === "string" && opts.cardHref && !allowLinks) {
     const cardLink = document.createElement("a");
@@ -626,54 +731,6 @@ function applyFocusFromQuery(searchRoot, setMode) {
   });
 }
 
-function syncReleaseColumnWidth() {
-  const columns = document.querySelectorAll(".release-column");
-  if (!columns.length) {
-    return;
-  }
-
-  const probe = document.createElement("span");
-  probe.style.position = "absolute";
-  probe.style.visibility = "hidden";
-  probe.style.whiteSpace = "nowrap";
-  probe.style.pointerEvents = "none";
-  document.body.appendChild(probe);
-
-  const firstStyle = window.getComputedStyle(columns[0]);
-  const padLeft = parseFloat(firstStyle.paddingLeft) || 0;
-  const padRight = parseFloat(firstStyle.paddingRight) || 0;
-  const borderLeft = parseFloat(firstStyle.borderLeftWidth) || 0;
-  const borderRight = parseFloat(firstStyle.borderRightWidth) || 0;
-
-  let maxWidth = 0;
-  columns.forEach((column) => {
-    const style = window.getComputedStyle(column);
-    probe.style.font = style.font;
-    probe.style.letterSpacing = style.letterSpacing;
-    const label = column.textContent ? column.textContent.trim() : "";
-    if (!label) {
-      return;
-    }
-    label.split(/\s+/).forEach((word) => {
-      if (!word) {
-        return;
-      }
-      probe.textContent = word;
-      const textWidth = probe.getBoundingClientRect().width;
-      const total = Math.ceil(textWidth + padLeft + padRight + borderLeft + borderRight);
-      if (total > maxWidth) {
-        maxWidth = total;
-      }
-    });
-  });
-
-  if (maxWidth > 0) {
-    document.documentElement.style.setProperty("--release-col-width", `${maxWidth}px`);
-  }
-
-  probe.remove();
-}
-
 function initReleaseModeControl(modeControlEl, modeStageEl, initialMode) {
   const safeInitial = initialMode === RELEASE_MODE_UPCOMING ? RELEASE_MODE_UPCOMING : RELEASE_MODE_PAST;
   if (!modeControlEl || !modeStageEl) {
@@ -813,7 +870,7 @@ async function loadReleases({
         emptyText: "No upcoming events yet.",
         cardHref: buildReleaseFocusHref,
         cardAriaLabel: (item) => {
-          const label = cleanText(item.event) || cleanText(item.work) || "release";
+          const label = cleanText(item.title) || cleanText(item.event) || cleanText(item.work) || "release";
           return `Open ${label} in all releases`;
         }
       });
@@ -826,7 +883,7 @@ async function loadReleases({
         tintRange: pastTintRange,
         cardHref: buildReleaseFocusHref,
         cardAriaLabel: (item) => {
-          const label = cleanText(item.event) || cleanText(item.work) || "release";
+          const label = cleanText(item.title) || cleanText(item.event) || cleanText(item.work) || "release";
           return `Open ${label} in all releases`;
         }
       };
@@ -907,7 +964,6 @@ async function loadReleases({
   }
 
   window.requestAnimationFrame(() => {
-    syncReleaseColumnWidth();
     if (isPrintModeActive()) {
       scheduleLatestReleasesPrintFit();
     }
@@ -957,5 +1013,4 @@ export function initReleases({
     modeControlEl,
     modeStageEl
   });
-  window.addEventListener("resize", syncReleaseColumnWidth);
 }

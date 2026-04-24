@@ -1,289 +1,632 @@
 [
-  {   
-    "date": "2026-05-14",
-    "dateLabel": "14 May 2026",
-    "event": "FUGK - catacombs concert",
-    "work": "p(≧∀≦)人p(≧∀≦)s♪",
-    "workItalic": true,
-    "role": "performance",
-    "place": "catacombs Terén, Husa na Provázku theatre"
+  {
+    "date": "2026-07-10",
+    "dateEnd": "2026-07-12",
+    "title": "Sonic intervention into river",
+    "event": "Festival VIVAT VILA VI.",
+    "type": "performance",
+    "format": "sonic intervention",
+    "venue": "Vila Prachatice",
+    "city": "Prachatice",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "",
+    "status": "upcoming",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/1RICQVZsSc",
+        "platform": "facebook"
+      },
+      "secondary": [
+        {
+          "label": "Map",
+          "url": "https://mapy.com/en/zakladni?q=N%C3%A1dra%C5%BEn%C3%AD%20364%2C%2038301%20Prachatice%2C%20Czech%20Republic"
+        }
+      ]
+    }
   },
   {
-    "date": "2026-04-09",
-    "dateLabel": "9 Apr 2026",
-    "event": "Multicreations HF JAMU",
-    "work": "Chillcouch",
-    "workItalic": true,
-    "role": "sound installation"
+    "date": "2026-07-03",
+    "dateEnd": "2026-07-05",
+    "title": "48 hours Neukölln",
+    "event": "48 hours Neukölln",
+    "type": "event",
+    "format": "",
+    "venue": "",
+    "city": "Neukölln",
+    "country": "Germany",
+    "collaborators": [],
+    "context": "",
+    "status": "upcoming",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
+  },
+  {
+    "date": "2026-05-14",
+    "dateEnd": null,
+    "title": "p(≧∀≦)人p(≧∀≦)s♪",
+    "event": "FUGK - catacombs concert",
+    "type": "performance",
+    "format": "performance",
+    "venue": "Catacombs Terén, Husa na Provázku theatre",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      "Shu Chon"
+    ],
+    "context": "",
+    "status": "upcoming",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/aZ6e4hfkq",
+        "platform": "facebook"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2026-04-22",
-    "dateLabel": "22 Apr 2026",
+    "dateEnd": null,
+    "title": "Cesta do království Much",
     "event": "Studio of Contemporary Music",
-    "workItalic": true,
-    "work": "Cesta do království Much",
-    "workHtml": "",
-    "role": "fixed composition",
-    "links": [
-      {
+    "type": "composition",
+    "format": "fixed composition",
+    "venue": "",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
         "label": "Portfolio",
-        "url": "index.html#work-cesta-do-kralovstvi-much"
-      }
-    ]
-  },
-  {
-    "date": "2026-07-10",
-    "dateLabel": "10–12 Jul 2026",
-    "event": "Festival VIVAT VILA VI.",
-    "dateEnd": "2026-07-12",
-    "place": "Vila Prachatice",
-    "role": "sonic intervetion into river",
-    "work": null,
-    "placeUrl": "https://mapy.com/en/zakladni?q=N%C3%A1dra%C5%BEn%C3%AD%20364%2C%2038301%20Prachatice%2C%20Czech%20Republic",
-    "links": [
-      { 
-        "label": "FB Event", 
-        "url": "https://fb.me/e/1RICQVZsSc" 
-      }
-    ]
-  },
-  {
-    "date":"2026-07-03",
-    "dateLabel": "3–5 Jul 2026",
-    "dateEnd": "2026-07-05",
-    "event": "48 hours neukoln",
-    "place": "Neukoln, Germany"
+        "url": "index.html#work-cesta-do-kralovstvi-much",
+        "platform": "portfolio"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2026-04-11",
-    "dateLabel": "11 Apr 2026",
-    "place": "skatepark hall in Kroměříž",
+    "dateEnd": null,
+    "title": "Sound performance",
     "event": "DIY event",
-    "work": null,
-    "role": "sound performance"
+    "type": "performance",
+    "format": "sound performance",
+    "venue": "Skatepark hall",
+    "city": "Kroměříž",
+    "country": "Czech Republic",
+    "collaborators": [
+      "Damián Říčan"
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
   },
   {
-    "date": "2026-04-06", 
-    "dateLabel": "6 Apr 2026",
+    "date": "2026-04-09",
+    "dateEnd": null,
+    "title": "Chillcouch",
+    "event": "Multicreations HF JAMU",
+    "type": "installation",
+    "format": "sound installation",
+    "venue": "JAMU",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
+  },
+  {
+    "date": "2026-04-06",
+    "dateEnd": null,
+    "title": "Tunneloflove25",
     "event": "Y:Haunted Realities II. (X-Ray)",
-    "work": "bridge of love 25",
-    "role": "video installation / sound design",
-    "place": "Divadlo X10 - Praha", 
-    "notes": "collaboration with Ay Lak Yakubouskaya & Shu Chon",
-    "links": [
-      { "label": "Event web", "url": "https://www.divadlox10.cz/cs/y-events/y-haunted-realities-ii-x-ray" }
-    ]
-  },
-  {
-    "date": "2026-03-14",
-    "dateLabel": "14 Mar 2026",
-    "event": "From clouds to fog",
-    "role": "sonic intervention with Sára Bočková (poems)",
-    "place": "nemezis galerie Velké Meziříčí",
-    "notes": "program for the exhibition opening of Jana Zikuška",
-    "links": [
-      { "label": "IG Poster", "url": "https://www.instagram.com/p/DVwVY7bircS/" }
-    ]
+    "type": "installation",
+    "format": "video installation / sound design",
+    "venue": "Divadlo X10",
+    "city": "Praha",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Ay Lak Yakubouskaya",
+        "role": ""
+      },
+      {
+        "name": "Shu Chon",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://www.divadlox10.cz/cs/y-events/y-haunted-realities-ii-x-ray",
+        "platform": "web"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2026-03-19",
-    "dateLabel": "19 Mar 2026",
-    "work": "sn\u011b\u017eenky",
-    "workItalic": true,
-    "role": "album release",
-    "temporalStatus": "past",
-    "links": [
-      { "label": "TIDAL", "url": "https://tidal.com/album/508281854" }
-    ]
+    "dateEnd": null,
+    "title": "sněženky",
+    "event": "",
+    "type": "single",
+    "format": "single release",
+    "venue": "",
+    "city": "",
+    "country": "",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Listen",
+        "url": "https://tidal.com/album/508281854",
+        "platform": "tidal"
+      },
+      "secondary": []
+    }
+  },
+  {
+    "date": "2026-03-14",
+    "dateEnd": null,
+    "title": "From clouds to fog",
+    "event": "From clouds to fog",
+    "type": "performance",
+    "format": "sonic intervention",
+    "venue": "Nemezis galerie",
+    "city": "Velké Meziříčí",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Sára Bočková",
+        "role": "poems"
+      }
+    ],
+    "context": "Program for the exhibition opening of Jana Zikuška.",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://www.instagram.com/p/DVwVY7bircS/",
+        "platform": "instagram"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2026-01-31",
-    "dateLabel": "31 Jan 2026",
+    "dateEnd": null,
+    "title": "Sound intervention",
     "event": "Nanofestival",
-    "work": null,
-    "role": "sound intervention",
-    "place": "Brno — Kafara",
-    "notes": "w/ objects by Sára Bočková; collab Filip Dobrocký",
-    "links": [
-      { "label": "FB Event", "url": "https://fb.me/e/6EeJhMIRp" }
-    ]
+    "type": "performance",
+    "format": "sound intervention",
+    "venue": "Kafara",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Sára Bočková",
+        "role": "objects"
+      },
+      {
+        "name": "Filip Dobrocký",
+        "role": "collaboration"
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/6EeJhMIRp",
+        "platform": "facebook"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2026-01-29",
-    "dateLabel": "29 Jan 2026",
+    "dateEnd": null,
+    "title": "gytarčečky",
     "event": "CORE",
-    "work": "Kytarovka",
-    "workItalic": true,
-    "role": "performer",
-    "place": "Brno — Rello",
-    "notes": "as part of the collective Mladé Zimy; dynamic collective setting",
-    "links": [
-      { "label": "FB Event", "url": "https://fb.me/e/3RDZd9VZU" }
-    ]
+    "type": "performance",
+    "format": "performer",
+    "venue": "Rello",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Mladé Zimy",
+        "role": "collective"
+      }
+    ],
+    "context": "Dynamic collective setting.",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/3RDZd9VZU",
+        "platform": "facebook"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-12-29",
-    "dateLabel": "29–30 Dec 2025",
     "dateEnd": "2025-12-30",
+    "title": "This Is the End",
     "event": "Radio Archipel",
-    "work": "This Is the End",
-    "workItalic": true,
-    "role": "60 min improvisation (24h stream)",
-    "place": "Berlin (UdK)",
-    "notes": "w/ Aliaksandra Yak., Shu, Alberto De Campo, Hannes Hoelzl, et al."
+    "type": "performance",
+    "format": "60 min improvisation / 24h stream",
+    "venue": "UdK",
+    "city": "Berlin",
+    "country": "Germany",
+    "collaborators": [
+      {
+        "name": "Aliaksandra Yakubouskaya",
+        "role": ""
+      },
+      {
+        "name": "Shu Chon",
+        "role": ""
+      },
+      {
+        "name": "Alberto De Campo",
+        "role": ""
+      },
+      {
+        "name": "Hannes Hoelzl",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
   },
   {
     "date": "2025-11-29",
-    "dateLabel": "29 Nov 2025",
+    "dateEnd": null,
+    "title": "Míchačka",
     "event": "There2Care",
-    "work": "Míchačka",
-    "workItalic": true,
-    "role": "performative lecture",
-    "place": "Brno — Tři ocásci",
-    "notes": "benefit event for Palestine",
-    "links": [
-      { "label": "Instagram", "url": "https://www.instagram.com/there2care/" }
-    ]
+    "type": "lecture",
+    "format": "performative lecture",
+    "venue": "Tři ocásci",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "Benefit event for Palestine.",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://www.instagram.com/there2care/",
+        "platform": "instagram"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-11-22",
-    "dateLabel": "22 Nov 2025",
-    "event": null,
-    "work": "Rýmařove",
-    "workItalic": true,
-    "role": "performance / accompaniment",
-    "place": "Rýmařov — Jazzclub",
-    "notes": "accompaniment to a poem; w/ Ladibor Danda"
+    "dateEnd": null,
+    "title": "Rýmařove",
+    "event": "",
+    "type": "performance",
+    "format": "performance / accompaniment",
+    "venue": "Jazzclub",
+    "city": "Rýmařov",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Ladibor Danda",
+        "role": ""
+      }
+    ],
+    "context": "Accompaniment to a poem.",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
   },
   {
     "date": "2025-11-02",
-    "dateLabel": "02 Nov 2025",
-    "event": null,
-    "work": "disconnected",
-    "workItalic": true,
-    "role": "collaboration / performance",
-    "place": "Brno — Divadlo na Orlí (DnO)",
-    "notes": "w/ DDD (Vladěna Klimek, Amálie Cuplová)",
-    "links": [
-      { "label": "Portfolio", "url": "index.html#works" }
-    ]
+    "dateEnd": null,
+    "title": "disconnected",
+    "event": "",
+    "type": "performance",
+    "format": "collaboration / performance",
+    "venue": "Divadlo na Orlí",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "DDD",
+        "role": ""
+      },
+      {
+        "name": "Vladěna Klimek",
+        "role": ""
+      },
+      {
+        "name": "Amálie Cuplová",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Portfolio",
+        "url": "index.html#works",
+        "platform": "portfolio"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-10-30",
-    "dateLabel": "30 Oct 2025",
+    "dateEnd": null,
+    "title": "Becoming Fish/Bird",
     "event": "SoundChain",
-    "work": "Becoming Fish/Bird",
-    "workItalic": true,
-    "role": "composition (2 voices) + live electronics",
-    "place": "Brno — DnO",
-    "notes": "organized by Otto Wanke; part of a collective composition",
-    "links": [
-      { "label": "Portfolio", "url": "index.html#works" },
-      { "label": "FB Event", "url": "https://fb.me/e/85wFKYg27" }
-    ]
+    "type": "composition",
+    "format": "composition for 2 voices + live electronics",
+    "venue": "Divadlo na Orlí",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Otto Wanke",
+        "role": "organizer"
+      }
+    ],
+    "context": "Part of a collective composition.",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Portfolio",
+        "url": "index.html#works",
+        "platform": "portfolio"
+      },
+      "secondary": [
+        {
+          "label": "Event",
+          "url": "https://fb.me/e/85wFKYg27",
+          "platform": "facebook"
+        }
+      ]
+    }
   },
   {
     "date": "2025-10-29",
-    "dateLabel": "29 Oct 2025",
+    "dateEnd": null,
+    "title": "REZONE",
     "event": "Fakulta Zní",
-    "work": "REZONE",
-    "workItalic": true,
-    "role": "sound installation / performance",
-    "place": "Brno — JAMU",
-    "notes": "w/ Martin Janda",
-    "links": [
-      { "label": "FB Event", "url": "https://fb.me/e/8iibQ7Kp0" }
-    ]
+    "type": "installation",
+    "format": "sound installation / performance",
+    "venue": "JAMU",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Martin Janda",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/8iibQ7Kp0",
+        "platform": "facebook"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-10-18",
-    "dateLabel": "18 Oct 2025",
+    "dateEnd": null,
+    "title": "breathing through memory",
     "event": "JAMA",
-    "work": "breathing through memory",
-    "workItalic": true,
-    "role": "electroacoustic live set",
-    "place": "Banská Štiavnica",
-    "links": [
-      { "label": "Event", "url": "https://www.jama.ooo/jama-79/" }
-    ]
+    "type": "performance",
+    "format": "electroacoustic live set",
+    "venue": "",
+    "city": "Banská Štiavnica",
+    "country": "Slovakia",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://www.jama.ooo/jama-79/",
+        "platform": "web"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-09-20",
-    "dateLabel": "20 Sep 2025",
-    "event": null,
-    "work": "Eternity of O",
-    "workItalic": true,
-    "role": "body performance",
-    "place": "Berlin (various)",
-    "notes": "w/ Ana",
-    "links": [
-      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
-    ]
+    "dateEnd": null,
+    "title": "Eternity of O",
+    "event": "",
+    "type": "performance",
+    "format": "body performance",
+    "venue": "Various",
+    "city": "Berlin",
+    "country": "Germany",
+    "collaborators": [
+      {
+        "name": "Ana",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://oiioiooi.xyz",
+        "platform": "web"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-09-20",
-    "dateLabel": "20 Sep 2025",
-    "event": null,
-    "work": "Improvisation with Pure Data patch",
-    "role": "computer music / improvisation",
-    "place": "Berlin (various)",
-    "notes": "w/ Alesya (Aliaksandra)",
-    "links": [
-      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
-    ]
+    "dateEnd": null,
+    "title": "Improvisation with Pure Data patch",
+    "event": "",
+    "type": "performance",
+    "format": "computer music / improvisation",
+    "venue": "Various",
+    "city": "Berlin",
+    "country": "Germany",
+    "collaborators": [
+      {
+        "name": "Aliaksandra Yakubouskaya",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://oiioiooi.xyz",
+        "platform": "web"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-09-11",
-    "dateLabel": "11 Sep 2025",
-    "event": null,
-    "work": "Black Peter Tarot",
-    "workItalic": true,
-    "role": "live set",
-    "place": "Dresden",
-    "links": [
-      { "label": "oiioiooi", "url": "https://oiioiooi.xyz" }
-    ]
+    "dateEnd": null,
+    "title": "Black Peter Tarot",
+    "event": "",
+    "type": "performance",
+    "format": "live set",
+    "venue": "",
+    "city": "Dresden",
+    "country": "Germany",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://oiioiooi.xyz",
+        "platform": "web"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2025-04-23",
-    "dateLabel": "23 Apr 2025",
+    "dateEnd": null,
+    "title": "krą_~jina",
     "event": "Studio of Contemporary Music",
-    "workHtml": "student works concert (<em>krą_~jina</em>)",
-    "role": "composition / presentation",
-    "place": "Brno — DnO",
-    "notes": "w/ Jan Horský"
+    "type": "composition",
+    "format": "composition / presentation",
+    "venue": "Divadlo na Orlí",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Jan Horský",
+        "role": ""
+      }
+    ],
+    "context": "Student works concert.",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
   },
   {
     "date": "2025-04-09",
-    "dateLabel": "09 Apr 2025",
+    "dateEnd": null,
+    "title": "Chleba s máslem se salámem",
     "event": "MULTICREATIONS",
-    "work": "Chleba s máslem se salámem",
-    "workItalic": true,
-    "role": "performance (DZKZNS)",
-    "place": "Brno — DnO"
+    "type": "performance",
+    "format": "performance (DZKZNS)",
+    "venue": "Divadlo na Orlí",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": null,
+      "secondary": []
+    }
   },
   {
     "date": "2024-10-17",
-    "dateLabel": "17 Oct 2024",
+    "dateEnd": null,
+    "title": "DZKZNS pískoviště",
     "event": "OUTPUT113/115",
-    "workHtml": "DZKZNS <em>pískoviště</em>",
-    "role": "live set",
-    "place": "Brno — CO.LABS",
-    "notes": "OUTPUT113/115 (collective / student events)",
-    "links": [
-      { "label": "Instagram", "url": "https://www.instagram.com/output_113115/" }
-    ]
+    "type": "performance",
+    "format": "live set",
+    "venue": "CO.LABS",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [],
+    "context": "OUTPUT113/115 collective / student events.",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Documentation",
+        "url": "https://www.instagram.com/output_113115/",
+        "platform": "instagram"
+      },
+      "secondary": []
+    }
   },
   {
     "date": "2024-09-12",
-    "dateLabel": "12 Sep 2024",
-    "event": null,
-    "work": "Petr Němec — live set",
-    "role": "ambient live set",
-    "place": "Brno — CO.LABS",
-    "notes": "w/ Černý Tesák",
-    "links": [
-      { "label": "FB Event", "url": "https://fb.me/e/4c9JEGVmH" }
-    ]
+    "dateEnd": null,
+    "title": "Petr Němec - live set",
+    "event": "",
+    "type": "performance",
+    "format": "ambient live set",
+    "venue": "CO.LABS",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Černý Tesák",
+        "role": ""
+      }
+    ],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://fb.me/e/4c9JEGVmH",
+        "platform": "facebook"
+      },
+      "secondary": []
+    }
   }
 ]
