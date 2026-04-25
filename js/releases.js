@@ -14,18 +14,18 @@ const RELEASE_MODE_SWITCH_THRESHOLD = 0.5;
 const PRINT_PAGE_HEIGHT_MM = 285;
 const PRINT_PAGE_FIT_SAFETY_PX = 12;
 const RELEASE_ROLE_COLORS = {
-  composer: "#FFFFFF",
-  performer: "#FFB3B3",
-  "sound-artist": "#B3FFFF",
-  "installation-artist": "#B3B3FF",
-  "sound-designer": "#FFB3FF",
-  "live-electronics": "#FFD6A3",
-  improviser: "#B3FFB3",
-  lecturer: "#D8B3FF",
-  researcher: "#B3D9FF",
-  collaborator: "#D9D9D9",
-  "release-artist": "#FFFFB3",
-  maker: "#F2F2F2"
+  "composer": "#FFFFFF",
+  "performer": "#373737",
+  "sound-artist": "#d7afea",
+  "installation-artist": "#ad91ba",
+  "sound-designer": "#8d6a70",
+  "live-electronics": "#d78c8c",
+  "improviser": "#95b795",
+  "lecturer": "#c996ff",
+  "researcher": "#9cceff",
+  "collaborator": "#d39464",
+  "release-artist": "#ffde84",
+  "maker": "#e0c9e5"
 };
 
 const releaseRuntimeState = {
