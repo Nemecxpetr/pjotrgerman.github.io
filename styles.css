@@ -437,10 +437,6 @@ body.fx-click-hint .wrap {
   border-radius: var(--radius);
 }
 
-.release-mode-stage-hover {
-  cursor: ew-resize;
-}
-
 .release-panel {
   position: relative;
   grid-area: 1 / 1;
@@ -477,6 +473,31 @@ body.fx-click-hint .wrap {
     var(--card);
 }
 
+.work.release.release-has-roles {
+  border-color: color-mix(in srgb, var(--release-role-color) 58%, var(--hairline));
+}
+
+.work.release.release-has-roles .work-meta {
+  background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--release-role-color) 10%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(0, 0, 0, var(--release-dark, 0)),
+      rgba(0, 0, 0, var(--release-dark, 0))
+    ),
+    var(--card);
+}
+
+.work.release.release-has-roles::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: var(--release-role-color);
+}
+
 .work.release.release-has-status.release-upcoming {
   border-color: color-mix(in srgb, currentColor 45%, var(--hairline));
 }
@@ -488,6 +509,20 @@ body.fx-click-hint .wrap {
 @media (prefers-color-scheme: dark) {
   .work.release .work-meta {
     background: linear-gradient(
+        0deg,
+        rgba(255, 255, 255, var(--release-light, 0)),
+        rgba(255, 255, 255, var(--release-light, 0))
+      ),
+      var(--card);
+  }
+
+  .work.release.release-has-roles .work-meta {
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--release-role-color) 14%, transparent),
+        transparent 34%
+      ),
+      linear-gradient(
         0deg,
         rgba(255, 255, 255, var(--release-light, 0)),
         rgba(255, 255, 255, var(--release-light, 0))
@@ -646,6 +681,32 @@ body[data-release-page="true"] .release-panel .work-meta .work-desc {
   min-height: 160px;
 }
 
+.press-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.press-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.press-preview {
+  display: block;
+  border-bottom: 0;
+  border-top: 1px solid var(--hairline);
+  background: var(--release-col-bg);
+}
+
+.press-preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
 .release-card-link {
   display: block;
   border-bottom: 0;
@@ -704,6 +765,21 @@ body[data-release-page="true"] .release-panel .work-meta .work-desc {
   .research-column {
     border-top: 0;
     border-left: 1px solid var(--hairline);
+  }
+
+  .press-grid {
+    grid-template-columns: minmax(0, 1fr) var(--release-col-width);
+    align-items: stretch;
+  }
+
+  .press-preview {
+    border-top: 0;
+    border-left: 1px solid var(--hairline);
+  }
+
+  .press-preview img {
+    height: 100%;
+    aspect-ratio: auto;
   }
 
   .research-link.research-highlight-row {

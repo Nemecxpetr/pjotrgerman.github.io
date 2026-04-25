@@ -11,9 +11,22 @@ const RELEASE_FOCUS_DURATION_MS = 1200;
 const RELEASE_MODE_PAST = "past";
 const RELEASE_MODE_UPCOMING = "upcoming";
 const RELEASE_MODE_SWITCH_THRESHOLD = 0.5;
-const RELEASE_MODE_HOVER_BLEND_WIDTH = 0.07;
 const PRINT_PAGE_HEIGHT_MM = 285;
 const PRINT_PAGE_FIT_SAFETY_PX = 12;
+const RELEASE_ROLE_COLORS = {
+  composer: "#FFFFFF",
+  performer: "#FFB3B3",
+  "sound-artist": "#B3FFFF",
+  "installation-artist": "#B3B3FF",
+  "sound-designer": "#FFB3FF",
+  "live-electronics": "#FFD6A3",
+  improviser: "#B3FFB3",
+  lecturer: "#D8B3FF",
+  researcher: "#B3D9FF",
+  collaborator: "#D9D9D9",
+  "release-artist": "#FFFFB3",
+  maker: "#F2F2F2"
+};
 
 const releaseRuntimeState = {
   latestItems: [],
@@ -107,24 +120,128 @@ function getTintRange(items) {
   };
 }
 
-function applyReleaseTint(card, value, range, invert = false) {
-  if (!card || !range || !Number.isFinite(value)) {
-    return;
+function getReleaseTintRatio(value, range, invert = false) {
+  if (!range || !Number.isFinite(value)) {
+    return null;
   }
   const minValue = range.min;
   const maxValue = range.max;
   if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
-    return;
+    return null;
   }
   const span = Math.max(1, maxValue - minValue);
   let t = Math.max(0, Math.min(1, (value - minValue) / span));
   if (invert) {
     t = 1 - t;
   }
+  return t;
+}
+
+function applyReleaseTint(card, value, range, invert = false) {
+  if (!card) {
+    return null;
+  }
+  const t = getReleaseTintRatio(value, range, invert);
+  if (t === null) {
+    return null;
+  }
   const darkAlpha = 0.08 * (1 - t);
   const lightAlpha = 0.12 * t;
   card.style.setProperty("--release-dark", darkAlpha.toFixed(3));
   card.style.setProperty("--release-light", lightAlpha.toFixed(3));
+  return t;
+}
+
+function normalizeReleaseRole(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim().toLowerCase();
+}
+
+function getArtistRoles(item) {
+  if (!item) {
+    return [];
+  }
+  const rawRoles = Array.isArray(item.artistRoles)
+    ? item.artistRoles
+    : typeof item.artistRoles === "string"
+      ? item.artistRoles.split(",")
+      : [];
+
+  return rawRoles
+    .map(normalizeReleaseRole)
+    .filter(Boolean);
+}
+
+function parseHexColor(hex) {
+  const match = String(hex || "").trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!match) {
+    return null;
+  }
+  const value = match[1];
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function toHexChannel(value) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+    .toString(16)
+    .padStart(2, "0")
+    .toUpperCase();
+}
+
+function rgbToHex(color) {
+  return `#${toHexChannel(color.r)}${toHexChannel(color.g)}${toHexChannel(color.b)}`;
+}
+
+function darkenColorByRatio(hex, ratio) {
+  const color = parseHexColor(hex);
+  if (!color) {
+    return hex;
+  }
+  const safeRatio = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 1;
+  const factor = 0.58 + (0.42 * safeRatio);
+  return rgbToHex({
+    r: color.r * factor,
+    g: color.g * factor,
+    b: color.b * factor
+  });
+}
+
+function multiplyRoleColors(roles) {
+  const colors = roles
+    .map((role) => parseHexColor(RELEASE_ROLE_COLORS[role]))
+    .filter(Boolean);
+
+  if (!colors.length) {
+    return "";
+  }
+
+  const multiplied = colors.reduce(
+    (acc, color) => ({
+      r: (acc.r * color.r) / 255,
+      g: (acc.g * color.g) / 255,
+      b: (acc.b * color.b) / 255
+    }),
+    { r: 255, g: 255, b: 255 }
+  );
+
+  return rgbToHex(multiplied);
+}
+
+function applyReleaseRoleColor(card, roles, tintRatio) {
+  const baseColor = multiplyRoleColors(roles);
+  const color = darkenColorByRatio(baseColor, tintRatio);
+  if (!card || !color) {
+    return;
+  }
+  card.classList.add("release-has-roles");
+  card.style.setProperty("--release-role-color", color);
+  card.dataset.releaseRoles = roles.join(" ");
 }
 
 function formatDateFromIso(iso) {
@@ -228,22 +345,6 @@ function isPrintModeActive() {
     || printFlag === "yes"
     || document.documentElement.classList.contains("print-mode")
   );
-}
-
-function mapHoverRatioToModeProgress(ratio) {
-  const clampedRatio = clamp01(ratio);
-  const bandWidth = Math.max(0.01, Math.min(1, RELEASE_MODE_HOVER_BLEND_WIDTH));
-  const halfBand = bandWidth / 2;
-  const bandStart = 0.5 - halfBand;
-  const bandEnd = 0.5 + halfBand;
-
-  if (clampedRatio <= bandStart) {
-    return 0;
-  }
-  if (clampedRatio >= bandEnd) {
-    return 1;
-  }
-  return (clampedRatio - bandStart) / bandWidth;
 }
 
 function getTodayUtcDateValue() {
@@ -407,9 +508,10 @@ function createReleaseCard(item, options) {
   const event = cleanText(item.event);
   const workText = titleText;
   const workHtml = cleanText(item.workHtml);
-  const role = cleanText(item.format) || cleanText(item.role) || cleanText(item.type);
+  const format = cleanText(item.format) || cleanText(item.type);
   const place = getLocationText(item);
   const placeUrl = cleanText(item.placeUrl);
+  const artistRoles = getArtistRoles(item);
   const collaborators = formatCollaborators(item.collaborators);
   const notes = cleanText(item.context) || cleanText(item.notes);
   const dateLabel = formatDateRange(item);
@@ -426,12 +528,13 @@ function createReleaseCard(item, options) {
   if (opts.showTemporalStatus) {
     card.classList.add("release-has-status");
   }
-  applyReleaseTint(
+  const tintRatio = applyReleaseTint(
     card,
     getReleaseTintValue(item),
     opts.tintRange || opts.yearRange,
     opts.invertTint === true
   );
+  applyReleaseRoleColor(card, artistRoles, tintRatio);
   const releaseKey = getReleaseKey(item);
   if (releaseKey) {
     card.dataset.releaseKey = releaseKey;
@@ -474,7 +577,7 @@ function createReleaseCard(item, options) {
   const detailLine = document.createElement("p");
   detailLine.className = "work-desc";
   appendDetailText(detailLine, dateLabel);
-  appendDetailText(detailLine, role);
+  appendDetailText(detailLine, format);
   const wrapsWholeCardAsLink = typeof opts.cardHref === "string" && opts.cardHref && opts.showLinks === false;
   if (placeUrl && !wrapsWholeCardAsLink) {
     appendDetailLink(detailLine, place, placeUrl);
@@ -775,21 +878,6 @@ function initReleaseModeControl(modeControlEl, modeStageEl, initialMode) {
   if (slider) {
     slider.addEventListener("input", () => {
       applyProgress(slider.value, { syncSlider: false });
-    });
-  }
-
-  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-    modeStageEl.classList.add("release-mode-stage-hover");
-    modeStageEl.addEventListener("pointermove", (event) => {
-      if (event.pointerType && event.pointerType !== "mouse") {
-        return;
-      }
-      const rect = modeStageEl.getBoundingClientRect();
-      if (rect.width <= 1) {
-        return;
-      }
-      const ratio = (event.clientX - rect.left) / rect.width;
-      applyProgress(mapHoverRatioToModeProgress(ratio));
     });
   }
 

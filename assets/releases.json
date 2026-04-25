@@ -6,10 +6,18 @@
     "event": "",
     "type": "single",
     "format": "single release",
+    "artistRoles": [
+      "initiator",
+      "improviser",
+      "sound-artist",
+      "maker"
+    ],
     "venue": "",
     "city": "Ochoz u Brna",
     "country": "Czech Republic",
-    "collaborators": ["Filip Dobrocký, Hynek Čejka, Bedřiška Ponížilová"],
+    "collaborators": [
+      "Filip Dobrocký, Hynek Čejka, Bedřiška Ponížilová"
+    ],
     "context": "",
     "status": "past",
     "links": {
@@ -28,6 +36,10 @@
     "event": "Festival VIVAT VILA VI.",
     "type": "performance",
     "format": "sonic intervention",
+    "artistRoles": [
+      "sound-artist",
+      "composer"
+    ],
     "venue": "Vila Prachatice",
     "city": "Prachatice",
     "country": "Czech Republic",
@@ -55,6 +67,11 @@
     "event": "48 hours Neukölln",
     "type": "event",
     "format": "",
+    "artistRoles": [
+      "performer",
+      "improviser",
+      "sound-artist"
+    ],
     "venue": "",
     "city": "Neukölln",
     "country": "Germany",
@@ -73,6 +90,12 @@
     "event": "FUGK - catacombs concert",
     "type": "performance",
     "format": "performance",
+    "artistRoles": [
+      "composer",
+      "performer",
+      "sound-artist",
+      "live-electronics"
+    ],
     "venue": "Catacombs Terén, Husa na Provázku theatre",
     "city": "Brno",
     "country": "Czech Republic",
@@ -97,6 +120,9 @@
     "event": "Studio of Contemporary Music",
     "type": "composition",
     "format": "fixed composition",
+    "artistRoles": [
+      "composer"
+    ],
     "venue": "",
     "city": "Brno",
     "country": "Czech Republic",
@@ -119,6 +145,11 @@
     "event": "DIY event",
     "type": "performance",
     "format": "sound performance",
+    "artistRoles": [
+      "initiator",
+      "performer",
+      "live-electronics"
+    ],
     "venue": "Skatepark hall",
     "city": "Kroměříž",
     "country": "Czech Republic",
@@ -139,6 +170,11 @@
     "event": "Multicreations HF JAMU",
     "type": "installation",
     "format": "sound installation",
+    "artistRoles": [
+      "sound-artist",
+      "maker",
+      "installation-artist"
+    ],
     "venue": "JAMU",
     "city": "Brno",
     "country": "Czech Republic",
@@ -157,6 +193,7 @@
     "event": "Y:Haunted Realities II. (X-Ray)",
     "type": "installation",
     "format": "video installation / sound design",
+    "artistRoles": [],
     "venue": "Divadlo X10",
     "city": "Praha",
     "country": "Czech Republic",
@@ -188,6 +225,7 @@
     "event": "",
     "type": "single",
     "format": "single release",
+    "artistRoles": [],
     "venue": "",
     "city": "",
     "country": "",
@@ -210,6 +248,7 @@
     "event": "From clouds to fog",
     "type": "performance",
     "format": "sonic intervention",
+    "artistRoles": [],
     "venue": "Nemezis galerie",
     "city": "Velké Meziříčí",
     "country": "Czech Republic",
@@ -237,6 +276,7 @@
     "event": "Nanofestival",
     "type": "performance",
     "format": "sound intervention",
+    "artistRoles": [],
     "venue": "Kafara",
     "city": "Brno",
     "country": "Czech Republic",
@@ -268,6 +308,7 @@
     "event": "CORE",
     "type": "performance",
     "format": "performer",
+    "artistRoles": [],
     "venue": "Rello",
     "city": "Brno",
     "country": "Czech Republic",
@@ -278,6 +319,8 @@
       }
     ],
     "context": "Dynamic collective setting.",
+    "cvAuthorRole": "performer",
+    "cv": false,
     "status": "past",
     "links": {
       "primary": {
@@ -295,6 +338,10 @@
     "event": "Radio Archipel",
     "type": "performance",
     "format": "60 min improvisation / 24h stream",
+    "artistRoles": [
+      "collaborator",
+      "live-electronics"
+    ],
     "venue": "UdK",
     "city": "Berlin",
     "country": "Germany",
@@ -317,6 +364,8 @@
       }
     ],
     "context": "",
+    "cvAuthorRole": "collaborator",
+    "cv": false,
     "status": "past",
     "links": {
       "primary": null,
@@ -330,6 +379,14 @@
     "event": "There2Care",
     "type": "lecture",
     "format": "performative lecture",
+    "artistRoles": [
+      "composer", 
+      "performer",
+      "improviser",
+      "sound-artist",
+      "live-electronics",
+      "researcher"
+    ],
     "venue": "Tři ocásci",
     "city": "Brno",
     "country": "Czech Republic",
@@ -352,6 +409,11 @@
     "event": "",
     "type": "performance",
     "format": "performance / accompaniment",
+    "artistRoles": [
+      "performer",
+      "improviser",
+      "live-electronics"
+    ],
     "venue": "Jazzclub",
     "city": "Rýmařov",
     "country": "Czech Republic",
@@ -362,6 +424,8 @@
       }
     ],
     "context": "Accompaniment to a poem.",
+    "cvAuthorRole": "accompaniment",
+    "cv": false,
     "status": "past",
     "links": {
       "primary": null,
@@ -375,6 +439,9 @@
     "event": "",
     "type": "performance",
     "format": "collaboration / performance",
+    "artistRoles": [
+      "composer"
+    ],
     "venue": "Divadlo na Orlí",
     "city": "Brno",
     "country": "Czech Republic",
@@ -410,6 +477,10 @@
     "event": "SoundChain",
     "type": "composition",
     "format": "composition for 2 voices + live electronics",
+    "artistRoles": [
+      "composer",
+      "live-electronics"
+    ],
     "venue": "Divadlo na Orlí",
     "city": "Brno",
     "country": "Czech Republic",
@@ -443,6 +514,11 @@
     "event": "Fakulta Zní",
     "type": "installation",
     "format": "sound installation / performance",
+    "artistRoles": [
+      "sound-artist",
+      "performer",
+      "sound-designer"
+    ],
     "venue": "JAMU",
     "city": "Brno",
     "country": "Czech Republic",
@@ -467,9 +543,15 @@
     "date": "2025-10-18",
     "dateEnd": null,
     "title": "breathing through memory",
-    "event": "JAMA",
+    "event": "JAMA 79",
     "type": "performance",
     "format": "electroacoustic live set",
+    "artistRoles": [
+      "composer",
+      "performer",
+      "live-electronics",
+      "improviser"
+    ],
     "venue": "",
     "city": "Banská Štiavnica",
     "country": "Slovakia",
@@ -492,7 +574,11 @@
     "event": "",
     "type": "performance",
     "format": "body performance",
-    "venue": "Various",
+    "artistRoles": [
+      "performer",
+      "improviser"
+    ],
+    "venue": "BHROX",
     "city": "Berlin",
     "country": "Germany",
     "collaborators": [
@@ -519,7 +605,12 @@
     "event": "",
     "type": "performance",
     "format": "computer music / improvisation",
-    "venue": "Various",
+    "artistRoles": [
+      "live-electronics",
+      "improviser",
+      "collaborator"
+    ],
+    "venue": "BHROX",
     "city": "Berlin",
     "country": "Germany",
     "collaborators": [
@@ -543,10 +634,15 @@
     "date": "2025-09-11",
     "dateEnd": null,
     "title": "Black Peter Tarot",
-    "event": "",
+    "event": "Circuit-Control Festival 2025",
     "type": "performance",
     "format": "live set",
-    "venue": "",
+    "artistRoles": [
+      "composer",
+      "performer",
+      "live-electronics"
+    ],
+    "venue": "C. Rockefeller Center for Contemporary Arts",
     "city": "Dresden",
     "country": "Germany",
     "collaborators": [],
@@ -568,13 +664,17 @@
     "event": "Studio of Contemporary Music",
     "type": "composition",
     "format": "composition / presentation",
+    "artistRoles": [
+      "composer",
+      "sound-artist"
+    ],
     "venue": "Divadlo na Orlí",
     "city": "Brno",
     "country": "Czech Republic",
     "collaborators": [
       {
         "name": "Jan Horský",
-        "role": ""
+        "role": "performer, poet"
       }
     ],
     "context": "Student works concert.",
@@ -591,10 +691,18 @@
     "event": "MULTICREATIONS",
     "type": "performance",
     "format": "performance (DZKZNS)",
+    "artistRoles": [
+      "initiator",
+      "performer",
+      "improviser",
+      "live-electronics"
+    ],
     "venue": "Divadlo na Orlí",
     "city": "Brno",
     "country": "Czech Republic",
-    "collaborators": [],
+    "collaborators": [
+      "DZKZNS, Vojtěch Škuta, Kristína Zubáková"
+    ],
     "context": "",
     "status": "past",
     "links": {
@@ -605,14 +713,22 @@
   {
     "date": "2024-10-17",
     "dateEnd": null,
-    "title": "DZKZNS pískoviště",
+    "title": "DZKZNS",
     "event": "OUTPUT113/115",
     "type": "performance",
     "format": "live set",
+    "artistRoles": [
+      "initiator",
+      "performer",
+      "improviser",
+      "live-electronics"
+    ],
     "venue": "CO.LABS",
     "city": "Brno",
     "country": "Czech Republic",
-    "collaborators": [],
+    "collaborators": [
+      "DZKZNS, Vojtěch Škuta"
+    ],
     "context": "OUTPUT113/115 collective / student events.",
     "status": "past",
     "links": {
@@ -631,6 +747,11 @@
     "event": "",
     "type": "performance",
     "format": "ambient live set",
+    "artistRoles": [
+      "improviser",
+      "live-electronics",
+      "composer"
+    ],
     "venue": "CO.LABS",
     "city": "Brno",
     "country": "Czech Republic",
