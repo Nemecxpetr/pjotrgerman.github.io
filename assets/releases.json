@@ -1,5 +1,27 @@
 [
   {
+    "date": "2026-04-25",
+    "dateEnd": null,
+    "title": "kostlivci v česneku",
+    "event": "",
+    "type": "single",
+    "format": "single release",
+    "venue": "",
+    "city": "Ochoz u Brna",
+    "country": "Czech Republic",
+    "collaborators": ["Filip Dobrocký, Hynek Čejka, Bedřiška Ponížilová"],
+    "context": "",
+    "status": "past",
+    "links": {
+      "primary": {
+        "label": "Listen",
+        "url": "https://petrnemec.bandcamp.com/album/kostlivci-v-esneku",
+        "platform": "bandcamp"
+      },
+      "secondary": []
+    }
+  },
+  {
     "date": "2026-07-10",
     "dateEnd": "2026-07-12",
     "title": "Sonic intervention into river",
