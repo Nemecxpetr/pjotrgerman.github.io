@@ -681,30 +681,11 @@ body[data-release-page="true"] .release-panel .work-meta .work-desc {
   min-height: 160px;
 }
 
-.press-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
 .press-downloads {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-}
-
-.press-preview {
-  display: block;
-  border-bottom: 0;
-  border-top: 1px solid var(--hairline);
-  background: var(--release-col-bg);
-}
-
-.press-preview img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
 }
 
 .release-card-link {
@@ -765,21 +746,6 @@ body[data-release-page="true"] .release-panel .work-meta .work-desc {
   .research-column {
     border-top: 0;
     border-left: 1px solid var(--hairline);
-  }
-
-  .press-grid {
-    grid-template-columns: minmax(0, 1fr) var(--release-col-width);
-    align-items: stretch;
-  }
-
-  .press-preview {
-    border-top: 0;
-    border-left: 1px solid var(--hairline);
-  }
-
-  .press-preview img {
-    height: 100%;
-    aspect-ratio: auto;
   }
 
   .research-link.research-highlight-row {
