@@ -87,6 +87,7 @@ export function initBackgroundFx({
   let phoneFxActive = false;
   let phoneFxPointerId = null;
   let phoneFxCaptureEl = null;
+  let touchFxEngineActive = false;
   const phoneFxMarks = [];
   const phoneFxTrace = [];
   let phoneFxTouchIdentifier = null;
@@ -194,8 +195,23 @@ export function initBackgroundFx({
     return false;
   }
 
-  function isPhoneFxMode() {
-    return window.innerWidth <= 720;
+  function shouldUseTouchFxEngine() {
+    if (touchFxEngineActive || phoneFxActive) {
+      return true;
+    }
+    const narrow = window.innerWidth <= 720;
+    if (!narrow) {
+      return false;
+    }
+    const coarse = typeof window.matchMedia === "function"
+      && (
+        window.matchMedia("(pointer: coarse)").matches ||
+        window.matchMedia("(any-pointer: coarse)").matches
+      );
+    const noHover = typeof window.matchMedia === "function"
+      && window.matchMedia("(hover: none)").matches;
+    const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    return touchCapable || coarse || noHover;
   }
 
   function isInteractiveTarget(target) {
@@ -395,7 +411,7 @@ export function initBackgroundFx({
   }
 
   function isMiniGameArea(clientX, clientY, target) {
-    if (isPhoneFxMode()) {
+    if (shouldUseTouchFxEngine()) {
       return !(target instanceof Element) || !isInteractiveTarget(target);
     }
     if (activeZoneEls.length) {
@@ -417,7 +433,7 @@ export function initBackgroundFx({
   }
 
   function isPhoneFxTouchZone(clientX, clientY, target) {
-    if (!isPhoneFxMode()) {
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     if (isInteractiveTarget(target)) {
@@ -1143,7 +1159,7 @@ export function initBackgroundFx({
       renderTraceAsTrail(pendingTrace, ts);
     }
 
-    if (isPhoneFxMode()) {
+    if (shouldUseTouchFxEngine()) {
       renderPhoneFxMarks();
     }
 
@@ -1263,7 +1279,7 @@ export function initBackgroundFx({
     const shouldEmit = !gameStopped
       && zoneEnabled
       && pointer.active
-      && !isPhoneFxMode()
+      && !shouldUseTouchFxEngine()
       && (emitDistSq > spacing * spacing || ts - lastEmitAt > idleEmitMs);
 
     if (shouldEmit) {
@@ -1326,7 +1342,7 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxPointerDown(ev) {
-    if (!isPhoneFxMode()) {
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     const isMouse = ev.pointerType === "mouse";
@@ -1396,7 +1412,11 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxTouchStart(event) {
-    if (!isPhoneFxMode() || gameStopped) {
+    touchFxEngineActive = true;
+    if (!shouldUseTouchFxEngine()) {
+      return false;
+    }
+    if (gameStopped) {
       return false;
     }
     const touch = getPhoneTouch(event, true);
@@ -1444,7 +1464,8 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxTouchMove(event) {
-    if (!isPhoneFxMode()) {
+    touchFxEngineActive = true;
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     const touch = getPhoneTouch(event);
@@ -1459,7 +1480,8 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxTouchEnd(event) {
-    if (!isPhoneFxMode()) {
+    touchFxEngineActive = true;
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     if (!phoneFxActive) {
@@ -1479,7 +1501,7 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxPointerMove(ev) {
-    if (!isPhoneFxMode()) {
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     if (!phoneFxActive || ev.pointerId !== phoneFxPointerId) {
@@ -1517,7 +1539,7 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxPointerUp(ev) {
-    if (!isPhoneFxMode()) {
+    if (!shouldUseTouchFxEngine()) {
       return false;
     }
     if (!phoneFxActive || ev.pointerId !== phoneFxPointerId) {
@@ -1533,7 +1555,7 @@ export function initBackgroundFx({
   }
 
   function handlePhoneFxScroll() {
-    if (!isPhoneFxMode() || !phoneFxActive) {
+    if (!shouldUseTouchFxEngine() || !phoneFxActive) {
       phoneFxLastScrollX = window.scrollX || 0;
       phoneFxLastScrollY = window.scrollY || 0;
       return;
