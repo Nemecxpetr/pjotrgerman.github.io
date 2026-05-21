@@ -390,16 +390,13 @@ export function initBackgroundFx({
   }
 
   function isMiniGameArea(clientX, clientY, target) {
+    if (isPhoneFxMode()) {
+      return !(target instanceof Element) || !isInteractiveTarget(target);
+    }
     if (activeZoneEls.length) {
       return activeZoneEls.some((el) => isPointInsideElement(clientX, clientY, el));
     }
-    if (isPhoneFxMode() && clientY >= h - settings.bottomDeadZonePx) {
-      return true;
-    }
-    if (isPointInPhoneBottomEmptySpace(clientX, clientY)) {
-      return true;
-    }
-    if (!isPhoneFxMode() && clientY >= h - settings.bottomDeadZonePx) {
+    if (clientY >= h - settings.bottomDeadZonePx) {
       return false;
     }
     if (!(target instanceof Element)) {
@@ -427,16 +424,7 @@ export function initBackgroundFx({
     if (activeZoneEls.length) {
       return activeZoneEls.some((el) => isPointInsideElement(clientX, clientY, el));
     }
-    if (clientY >= h - settings.bottomDeadZonePx) {
-      return true;
-    }
-    if (isPointInPhoneBottomEmptySpace(clientX, clientY)) {
-      return true;
-    }
-    if (!contentWrap || !(target instanceof Element)) {
-      return true;
-    }
-    return !contentWrap.contains(target);
+    return true;
   }
 
   function setMiniModeActive(next) {
@@ -483,35 +471,6 @@ export function initBackgroundFx({
       clientY >= rect.top &&
       clientY <= rect.bottom
     );
-  }
-
-  function isPointInPhoneBottomEmptySpace(clientX, clientY) {
-    if (!isPhoneFxMode() || !contentWrap) {
-      return false;
-    }
-    const wrapRect = contentWrap.getBoundingClientRect();
-    if (
-      clientX < wrapRect.left ||
-      clientX > wrapRect.right ||
-      clientY < wrapRect.top ||
-      clientY > wrapRect.bottom
-    ) {
-      return false;
-    }
-
-    const children = [...contentWrap.children].filter((child) => {
-      if (!(child instanceof Element)) {
-        return false;
-      }
-      const styles = window.getComputedStyle(child);
-      return styles.display !== "none" && styles.visibility !== "hidden";
-    });
-    const lastChild = children[children.length - 1];
-    if (!lastChild) {
-      return false;
-    }
-    const lastRect = lastChild.getBoundingClientRect();
-    return clientY > lastRect.bottom + 8;
   }
 
   function queryElements(selector) {
