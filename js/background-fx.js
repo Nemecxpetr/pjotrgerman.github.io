@@ -46,6 +46,7 @@ export function initBackgroundFx({
   const maskImg = document.getElementById(maskImgId);
   const contentWrap = document.querySelector(wrapSelector);
   const activeZoneEls = queryElements(activeZoneSelector);
+  const phoneFxPlayAreaEls = queryElements(".phone-fx-play-area");
   const maskAreaEls = queryElements(maskAreaSelector);
   const secretVideoBlock = document.getElementById("secret-video-block");
   const secretVideoFrame = document.getElementById("secret-video-frame");
@@ -84,6 +85,10 @@ export function initBackgroundFx({
   let coarseCaptureEl = null;
   let touchScrollLockActive = false;
   let previousBodyTouchAction = "";
+  let phoneFxTouchActive = false;
+  let phoneFxTouchPointerId = null;
+  let phoneFxTouchWords = [];
+  const phoneFxPinnedDots = [];
   let lastAccentX = null;
   let lastAccentY = null;
   let lastAccentEmitAt = -Infinity;
@@ -177,6 +182,21 @@ export function initBackgroundFx({
     }
 
     return false;
+  }
+
+  function isPhoneFxMode() {
+    const smallViewport = window.innerWidth <= 720;
+    if (!smallViewport) {
+      return false;
+    }
+    const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    const coarseMedia = typeof window.matchMedia === "function"
+      && (window.matchMedia("(hover: none)").matches || window.matchMedia("(any-pointer: coarse)").matches);
+    return isCoarsePointer || touchCapable || coarseMedia;
+  }
+
+  function isPhoneFxPlayArea(clientX, clientY) {
+    return phoneFxPlayAreaEls.some((el) => isPointInsideElement(clientX, clientY, el));
   }
 
   function isInteractiveTarget(target) {
@@ -376,6 +396,9 @@ export function initBackgroundFx({
   }
 
   function isMiniGameArea(clientX, clientY, target) {
+    if (isPhoneFxMode() && phoneFxPlayAreaEls.length) {
+      return isPhoneFxPlayArea(clientX, clientY);
+    }
     if (activeZoneEls.length) {
       return activeZoneEls.some((el) => isPointInsideElement(clientX, clientY, el));
     }
@@ -412,7 +435,7 @@ export function initBackgroundFx({
       return;
     }
 
-    if (leftMouseHeld) {
+    if (leftMouseHeld && !phoneFxTouchActive) {
       if (!wordSessionActive) {
         startWordSession();
       }
@@ -503,6 +526,8 @@ export function initBackgroundFx({
     lockedConnections.length = 0;
     pendingTrace = [];
     pairStartAnchor = null;
+    phoneFxPinnedDots.length = 0;
+    phoneFxTouchWords = [];
     lastAccentX = null;
     lastAccentY = null;
     lastAccentEmitAt = -Infinity;
@@ -671,7 +696,7 @@ export function initBackgroundFx({
   }
 
   function pushPoint({ x, y, accent, size, word }) {
-    trail.push({
+    const point = {
       x,
       y,
       life: accent ? settings.accentLife : settings.baseLife,
@@ -679,11 +704,14 @@ export function initBackgroundFx({
       size,
       accent,
       word
-    });
+    };
+    trail.push(point);
 
     if (trail.length > settings.maxPoints) {
       trail.splice(0, trail.length - settings.maxPoints);
     }
+
+    return point;
   }
 
   function appendPendingTracePoint(x, y, ts, force = false, spacingPx = settings.traceSampleSpacing) {
@@ -852,14 +880,17 @@ export function initBackgroundFx({
       return "not_applicable";
     }
 
-    pushPoint({
+    const point = pushPoint({
       x,
       y,
       accent: true,
       size,
       word
     });
-    if (miniModeActive && wordSessionActive) {
+    if (phoneFxTouchActive) {
+      phoneFxTouchWords.push(point);
+    }
+    if (miniModeActive && wordSessionActive && !phoneFxTouchActive) {
       registerPairAnchor({
         x,
         y,
@@ -917,6 +948,14 @@ export function initBackgroundFx({
 
   function render(ts) {
     ctx.clearRect(0, 0, w, h);
+
+    for (let i = 0; i < phoneFxPinnedDots.length; i += 1) {
+      const dot = phoneFxPinnedDots[i];
+      ctx.fillStyle = rgba(ACCENT_COLOR, 0.92);
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, Math.max(2.8, dot.size), 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     for (let i = 0; i < lockedConnections.length; i += 1) {
       const connection = lockedConnections[i];
@@ -1045,7 +1084,10 @@ export function initBackgroundFx({
       && (emitDistSq > spacing * spacing || ts - lastEmitAt > idleEmitMs);
 
     if (shouldEmit) {
-      const accentInfo = sampleMaskAt(pointer.x, pointer.y);
+      const phoneWordTouch = phoneFxTouchActive && isPhoneFxMode();
+      const accentInfo = phoneWordTouch
+        ? { hit: true, strength: 0.72 }
+        : sampleMaskAt(pointer.x, pointer.y);
       const accentSize = settings.baseDotSize + settings.accentMaxExtraSize * accentInfo.strength;
       const accentSpacingSq = settings.accentMinSpacing * settings.accentMinSpacing;
       const accentCooldownReady = ts - lastAccentEmitAt >= settings.accentCooldownMs;
@@ -1159,6 +1201,10 @@ export function initBackgroundFx({
       }
       ev.preventDefault();
     }
+
+    if (phoneFxTouchActive && ev.pointerId === phoneFxTouchPointerId) {
+      ev.preventDefault();
+    }
   }
 
   function onPointerDown(ev) {
@@ -1168,6 +1214,45 @@ export function initBackgroundFx({
     if (isLeft) {
       leftMouseHeld = true;
     }
+    if (
+      isPhoneFxMode()
+      && isLeft
+      && isPhoneFxPlayArea(ev.clientX, ev.clientY)
+      && !gameStopped
+    ) {
+      coarseTapStart = {
+        pointerId: ev.pointerId,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        startedAt: now,
+        inFxZone: true,
+        moved: false
+      };
+      coarseStrokeActive = false;
+      phoneFxTouchActive = true;
+      phoneFxTouchPointerId = ev.pointerId;
+      phoneFxTouchWords = [];
+      lastWordX = null;
+      lastWordY = null;
+      lastAccentX = null;
+      lastAccentY = null;
+      setMiniModeActive(true);
+      setWordsActive(true);
+      onPointerMove(ev);
+      const captureTarget = ev.target instanceof Element ? ev.target : canvas;
+      if (captureTarget && typeof captureTarget.setPointerCapture === "function") {
+        try {
+          captureTarget.setPointerCapture(ev.pointerId);
+          coarseCaptureEl = captureTarget;
+        } catch {
+          coarseCaptureEl = null;
+        }
+      }
+      setTouchScrollLock(true);
+      ev.preventDefault();
+      return;
+    }
+
     onPointerMove(ev);
     if (isMobileStrokeInput(ev) && isLeft) {
       const downTarget = ev.target instanceof Element
@@ -1222,6 +1307,74 @@ export function initBackgroundFx({
     const now = performance.now();
     const isMouse = ev.pointerType === "mouse";
     const isLeft = !isMouse || ev.button === 0;
+
+    if (phoneFxTouchActive && isLeft && ev.pointerId === phoneFxTouchPointerId) {
+      const tapDurationMs = coarseTapStart ? now - coarseTapStart.startedAt : Infinity;
+      const moveToleranceSq = settings.coarseTapMoveTolerancePx * settings.coarseTapMoveTolerancePx;
+      const travelSq = coarseTapStart
+        ? distSq(ev.clientX, ev.clientY, coarseTapStart.startX, coarseTapStart.startY)
+        : Infinity;
+      const moved = Boolean(coarseTapStart && (coarseTapStart.moved || travelSq > moveToleranceSq));
+      const isTap = !moved && tapDurationMs <= settings.coarseTapMaxDurationMs;
+      const doubleTapDistanceSq = settings.coarseDoubleTapDistancePx * settings.coarseDoubleTapDistancePx;
+      const isDoubleTap = isTap
+        && now - lastCoarseTapAt <= settings.coarseDoubleTapWindowMs
+        && distSq(ev.clientX, ev.clientY, lastCoarseTapX, lastCoarseTapY) <= doubleTapDistanceSq;
+
+      if (isDoubleTap) {
+        clearAllGameVisuals();
+        lastCoarseTapAt = -Infinity;
+      } else {
+        for (let i = 0; i < phoneFxTouchWords.length; i += 1) {
+          const wordPoint = phoneFxTouchWords[i];
+          if (!wordPoint || !wordPoint.word) {
+            continue;
+          }
+          phoneFxPinnedDots.push({
+            x: wordPoint.x,
+            y: wordPoint.y,
+            size: wordPoint.size
+          });
+          wordPoint.life = 0;
+        }
+        if (phoneFxPinnedDots.length > settings.maxPoints) {
+          phoneFxPinnedDots.splice(0, phoneFxPinnedDots.length - settings.maxPoints);
+        }
+        if (isTap) {
+          lastCoarseTapAt = now;
+          lastCoarseTapX = ev.clientX;
+          lastCoarseTapY = ev.clientY;
+        } else {
+          lastCoarseTapAt = -Infinity;
+        }
+      }
+
+      phoneFxTouchActive = false;
+      phoneFxTouchPointerId = null;
+      phoneFxTouchWords = [];
+      coarseStrokeActive = false;
+      coarseTapStart = null;
+      if (
+        coarseCaptureEl
+        && typeof coarseCaptureEl.releasePointerCapture === "function"
+        && typeof coarseCaptureEl.hasPointerCapture === "function"
+      ) {
+        try {
+          if (coarseCaptureEl.hasPointerCapture(ev.pointerId)) {
+            coarseCaptureEl.releasePointerCapture(ev.pointerId);
+          }
+        } catch {
+          // Ignore capture release failures.
+        }
+      }
+      coarseCaptureEl = null;
+      leftMouseHeld = false;
+      wordSessionActive = false;
+      setWordsActive(false);
+      setTouchScrollLock(false);
+      ev.preventDefault();
+      return;
+    }
 
     if (isMobileStrokeInput(ev) && isLeft && coarseTapStart && ev.pointerId === coarseTapStart.pointerId) {
       const tapDurationMs = now - coarseTapStart.startedAt;
@@ -1289,6 +1442,9 @@ export function initBackgroundFx({
     coarseStrokeActive = false;
     coarseTapStart = null;
     coarseCaptureEl = null;
+    phoneFxTouchActive = false;
+    phoneFxTouchPointerId = null;
+    phoneFxTouchWords = [];
     setTouchScrollLock(false);
     endWordSession();
     setMiniModeActive(false);
@@ -1311,6 +1467,9 @@ export function initBackgroundFx({
       coarseTapStart = null;
       lastCoarseTapAt = -Infinity;
       coarseCaptureEl = null;
+      phoneFxTouchActive = false;
+      phoneFxTouchPointerId = null;
+      phoneFxTouchWords = [];
       setTouchScrollLock(false);
     });
   }
