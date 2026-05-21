@@ -1040,10 +1040,10 @@ body[data-release-page="true"].print-mode .release-secondary-action {
 }
 
 .playground-stage {
-  min-height: 0;
-  border: 1px dashed color-mix(in srgb, var(--hairline) 80%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg) 68%, transparent);
+  min-height: clamp(260px, 60vh, 620px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   touch-action: none;
   cursor: crosshair;
 }

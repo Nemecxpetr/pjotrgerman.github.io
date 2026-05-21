@@ -90,6 +90,7 @@ export function initBackgroundFx({
   let touchFxEngineActive = false;
   const phoneFxMarks = [];
   const phoneFxTrace = [];
+  let phoneFxTraceHideAt = -Infinity;
   let phoneFxPairCarryAnchor = null;
   let phoneFxTouchIdentifier = null;
   let lastPhoneFxMarkX = null;
@@ -153,7 +154,8 @@ export function initBackgroundFx({
     coarseDoubleTapDistancePx: 48,
     coarseTraceSampleSpacingPx: 2,
     maxConnectionTriggersPerTick: 2,
-    resumeGapMs: 800
+    resumeGapMs: 800,
+    phoneFxTraceHideDelayMs: 200
   };
 
   let dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -611,6 +613,7 @@ export function initBackgroundFx({
       phoneFxTouchIdentifier = null;
       clearPhoneFxMarks();
       phoneFxTrace.length = 0;
+      phoneFxTraceHideAt = -Infinity;
       pendingTrace = [];
       pairStartAnchor = null;
       phoneFxPairCarryAnchor = null;
@@ -739,11 +742,14 @@ export function initBackgroundFx({
     return true;
   }
 
-  function renderPhoneFxMarks() {
-    if (phoneFxTrace.length > 1) {
-      renderTraceAsTrail(phoneFxTrace, performance.now());
+  function renderPhoneFxTrace(points, ts) {
+    if (!points || points.length < 2) {
+      return;
     }
+    renderTraceAsTrail(points, ts);
+  }
 
+  function renderPhoneFxMarks() {
     if (phoneFxMarks.length === 0) {
       return;
     }
@@ -1020,6 +1026,7 @@ export function initBackgroundFx({
       }
     }
 
+    phoneFxTraceHideAt = ts + settings.phoneFxTraceHideDelayMs;
     pairStartAnchor = null;
     pendingTrace = [];
   }
@@ -1170,6 +1177,15 @@ export function initBackgroundFx({
   function render(ts) {
     ctx.clearRect(0, 0, w, h);
 
+    if (phoneFxTraceHideAt !== -Infinity && ts > phoneFxTraceHideAt) {
+      phoneFxTrace.length = 0;
+      phoneFxTraceHideAt = -Infinity;
+    }
+
+    if (shouldUseTouchFxEngine()) {
+      renderPhoneFxTrace(phoneFxTrace, ts);
+    }
+
     for (let i = 0; i < lockedConnections.length; i += 1) {
       const connection = lockedConnections[i];
       if (connection.trace.length < 2) {
@@ -1182,10 +1198,6 @@ export function initBackgroundFx({
 
     if ((miniModeActive || secretZoneActive) && pendingTrace.length > 1) {
       renderTraceAsTrail(pendingTrace, ts);
-    }
-
-    if (shouldUseTouchFxEngine()) {
-      renderPhoneFxMarks();
     }
 
     for (let i = 1; i < trail.length; i += 1) {
@@ -1280,6 +1292,10 @@ export function initBackgroundFx({
         ctx.arc(pairStartAnchor.x, pairStartAnchor.y, radius, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    if (shouldUseTouchFxEngine()) {
+      renderPhoneFxMarks();
     }
 
     while (trail.length > 0 && trail[0].life <= 0) {
