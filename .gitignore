@@ -13,6 +13,7 @@ assets/.press-package-build/
 # Generated exports and downloadable packages
 output/
 articles/output/
+cv/
 *.zip
 *.pdf
 
