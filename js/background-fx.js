@@ -90,6 +90,7 @@ export function initBackgroundFx({
   let touchFxEngineActive = false;
   const phoneFxMarks = [];
   const phoneFxTrace = [];
+  let phoneFxPairCarryAnchor = null;
   let phoneFxTouchIdentifier = null;
   let lastPhoneFxMarkX = null;
   let lastPhoneFxMarkY = null;
@@ -558,6 +559,7 @@ export function initBackgroundFx({
     lockedConnections.length = 0;
     pendingTrace = [];
     pairStartAnchor = null;
+    phoneFxPairCarryAnchor = null;
     lastAccentX = null;
     lastAccentY = null;
     lastAccentEmitAt = -Infinity;
@@ -611,6 +613,7 @@ export function initBackgroundFx({
       phoneFxTrace.length = 0;
       pendingTrace = [];
       pairStartAnchor = null;
+      phoneFxPairCarryAnchor = null;
       miniModeActive = true;
     }
     phoneFxLastX = x;
@@ -633,6 +636,7 @@ export function initBackgroundFx({
     lockedConnections.length = 0;
     pendingTrace = [];
     pairStartAnchor = null;
+    phoneFxPairCarryAnchor = null;
   }
 
   function isPhoneFxDoubleTap(x, y, ts) {
@@ -645,6 +649,20 @@ export function initBackgroundFx({
     lastPhoneFxTapAt = ts;
     lastPhoneFxTapX = x;
     lastPhoneFxTapY = y;
+  }
+
+  function resetPhoneFxStrokeTrace() {
+    pairStartAnchor = null;
+    pendingTrace = [];
+    if (!phoneFxPairCarryAnchor) {
+      return;
+    }
+    pendingTrace = [{
+      x: phoneFxPairCarryAnchor.x,
+      y: phoneFxPairCarryAnchor.y,
+      generatedAt: phoneFxPairCarryAnchor.generatedAt,
+      size: settings.baseDotSize
+    }];
   }
 
   function emitPhoneFxMark(x, y, ts, force = false) {
@@ -689,12 +707,15 @@ export function initBackgroundFx({
     lastPhoneFxMarkX = x;
     lastPhoneFxMarkY = y;
 
+    if (phoneFxPairCarryAnchor && !pairStartAnchor) {
+      pairStartAnchor = phoneFxPairCarryAnchor;
+    }
     if (!pairStartAnchor) {
       pendingTrace = [{ x, y, generatedAt: ts, size: settings.baseDotSize }];
     } else {
       appendPendingTracePoint(x, y, ts, true, settings.coarseTraceSampleSpacingPx);
     }
-    registerPairAnchor({
+    const anchor = {
       x,
       y,
       size,
@@ -703,7 +724,10 @@ export function initBackgroundFx({
       isWord: false,
       word: null,
       phoneWord: word
-    }, ts);
+    };
+    const closingPair = Boolean(pairStartAnchor);
+    registerPairAnchor(anchor, ts);
+    phoneFxPairCarryAnchor = closingPair ? null : anchor;
 
     if (!secretZoneActive) {
       playPluck(size, {
@@ -1378,8 +1402,7 @@ export function initBackgroundFx({
     phoneFxLastY = ev.clientY;
     phoneFxLastScrollX = window.scrollX || 0;
     phoneFxLastScrollY = window.scrollY || 0;
-    pendingTrace = [];
-    pairStartAnchor = null;
+    resetPhoneFxStrokeTrace();
     pointer.x = ev.clientX;
     pointer.y = ev.clientY;
     pointer.targetX = ev.clientX;
@@ -1471,8 +1494,7 @@ export function initBackgroundFx({
     phoneFxLastY = touch.clientY;
     phoneFxLastScrollX = window.scrollX || 0;
     phoneFxLastScrollY = window.scrollY || 0;
-    pendingTrace = [];
-    pairStartAnchor = null;
+    resetPhoneFxStrokeTrace();
     pointer.x = touch.clientX;
     pointer.y = touch.clientY;
     pointer.targetX = touch.clientX;
@@ -1522,8 +1544,6 @@ export function initBackgroundFx({
     phoneFxActive = false;
     phoneFxPointerId = null;
     phoneFxTouchIdentifier = null;
-    pairStartAnchor = null;
-    pendingTrace = [];
     setTouchScrollLock(false);
     syncFxCursorHintState();
     return true;
@@ -1577,8 +1597,6 @@ export function initBackgroundFx({
 
     phoneFxActive = false;
     phoneFxPointerId = null;
-    pairStartAnchor = null;
-    pendingTrace = [];
     syncFxCursorHintState();
     return true;
   }

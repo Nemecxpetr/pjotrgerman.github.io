@@ -7,7 +7,7 @@
  * - Release: larger for bigger dots, shorter for smaller dots
  * - Loudness: bigger dot louder, smaller dot quieter
  */
-const GLOBAL_VOLUME = 0.92;
+const GLOBAL_VOLUME = 1.35;
 
 const PLUCK_SETTINGS = {
   samples: 4096,
@@ -256,7 +256,7 @@ export function playPluck(size, sizeRange = { min: 1, max: 10 }) {
   const releaseSamples = Math.round(
     PLUCK_SETTINGS.minReleaseSamples + (releaseMax - PLUCK_SETTINGS.minReleaseSamples) * amount
   );
-  const gainAmount = (0.06 + 0.18 * amount) * PLUCK_SETTINGS.outputGainScale;
+  const gainAmount = (0.1 + 0.3 * amount) * PLUCK_SETTINGS.outputGainScale;
   const frequency = 170 + 330 * (1 - amount);
 
   const buffer = ac.createBuffer(1, PLUCK_SETTINGS.samples, ac.sampleRate);

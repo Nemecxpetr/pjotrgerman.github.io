@@ -277,6 +277,36 @@ function initPersistedAudioRestore() {
   window.addEventListener("touchstart", restoreAudio, { passive: true });
 }
 
+function initPlaygroundWordFile() {
+  const input = document.getElementById("playground-word-file");
+  const source = document.getElementById("playground-word-source");
+  const label = document.getElementById("playground-file-label");
+
+  if (!(input instanceof HTMLInputElement) || !source) {
+    return;
+  }
+
+  input.addEventListener("change", async () => {
+    const file = input.files && input.files[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      source.textContent = text || "";
+      if (label) {
+        label.textContent = file.name || "Text loaded";
+      }
+    } catch (error) {
+      console.warn("Failed to load playground word file", error);
+      if (label) {
+        label.textContent = "Load failed";
+      }
+    }
+  });
+}
+
 function getBackgroundFxOptions() {
   const canvas = document.getElementById("fx");
   const options = {
@@ -389,6 +419,7 @@ function bootstrap() {
   runInitStep("year label", initYearLabel);
   runInitStep("print work links", initPrintWorkLinks);
   runInitStep("persisted audio restore", initPersistedAudioRestore);
+  runInitStep("playground word file", initPlaygroundWordFile);
   runInitStep("releases", initReleases);
   runInitStep("sound toggle", initSoundToggle);
   runInitStep("print fx bridge", initPrintFxBridge);
