@@ -1,5 +1,32 @@
 [
   {
+    "date" : "2026-06-19",
+    "dateEnd": null,
+    "title": "Erasmus BIP - concert",
+    "event": "Erasmus BIP",
+    "type": "concert",
+    "format": "concert",
+    "artistRoles": [
+      "composer",
+      "performer"
+    ],
+    "venue": "Komorní sál JAMU",
+    "city": "Brno",
+    "country": "Czech Republic",
+    "collaborators": [
+      {
+        "name": "Patrik Rašman",
+        "role": "composer, performer"
+      }
+    ],
+    "context": "Concert of works by Erasmus BIP students.",
+    "links": {  
+      "primary": null
+      },
+      "secondary": []
+    }
+  },
+  {
     "date": "2026-04-25",
     "dateEnd": null,
     "title": "kostlivci v česneku",
@@ -79,7 +106,11 @@
     "collaborators": [],
     "context": "",
     "links": {
-      "primary": null,
+      "primary": {
+        "label": "Event",
+        "url": "https://48-stunden-neukoelln.de/de/festival",
+        "platform": "website"
+      },
       "secondary": []
     },
     "cv":false
