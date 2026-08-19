@@ -1,5 +1,41 @@
 [
   {
+    "date": "2026-08-21",
+    "title": "Tunneloflove25",
+    "event": "Bezmez",
+    "type": "screening",
+    "city": "Velké Meziříčí",
+    "country": "Czech Republic",
+    "collaborators": ["Shu Chin Chon", "Aliaksandra Yakubouskaya"],
+    "links": {
+      "primary": {
+        "label": "Event",
+        "url": "https://www.instagram.com/p/DbllngTiLEh/?img_index=8&igsi=bHdybXY1aDQwM2g4",
+        "platform": "instagram"
+      },
+      "secondary": []
+    }
+  },
+  {
+    "date": "2026-08-06",
+    "title": "DHEU ",
+    "event": "Léto v pohybu: 6",
+    "type": "performance",
+    "artistRoles": ["collaborator","composer", "interpreter", "improviser", "sound-designer"],
+    "venue": "Sál Hraničář",
+    "city": "Ústí nad Labem",
+    "country": "Czech Republic",
+    "collaborators": ["energie"],
+    "links": {
+      "primary": {
+        "label": "IG",
+        "url": "https://www.instagram.com/p/DblYMvRCt4F/?img_index=3&igsi=MTExN211NXQybmE5MQ==",
+        "platform": "instagram"
+      },
+      "secondary": []
+    }
+  },
+  {
     "date": "2026-07-20",
     "dateEnd": null,
     "title": "rýmařovský koláč",
